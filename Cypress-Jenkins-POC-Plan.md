@@ -4,7 +4,7 @@
 
 ## Phase 1: Environment Setup (Fresh Machine)
 
-- [ ] Install **nvm** (Node Version Manager) to manage and isolate Node.js versions:
+- [x] Install **nvm** (Node Version Manager) to manage and isolate Node.js versions:
   ```bash
   # macOS / Linux
   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
@@ -12,43 +12,43 @@
   # Windows — use nvm-windows
   # Download installer from https://github.com/coreybutler/nvm-windows/releases
   ```
-- [ ] Verify nvm: `nvm --version`
-- [ ] Install **Node.js LTS v20+** via nvm:
+- [x] Verify nvm: `nvm --version`
+- [x] Install **Node.js LTS v20+** via nvm:
   ```bash
   nvm install 20
   nvm use 20
   nvm alias default 20
   ```
-- [ ] Verify Node: `node -v` / `npm -v`
-- [ ] Create a `.nvmrc` file in the project root to lock the Node version for all contributors:
+- [x] Verify Node: `node -v` / `npm -v`
+- [x] Create a `.nvmrc` file in the project root to lock the Node version for all contributors:
   ```bash
   echo "20" > .nvmrc
   ```
   > Any contributor can then run `nvm use` in the project directory to auto-switch to the correct version.
-- [ ] Install **Git** and configure `user.name` / `user.email`
-- [ ] Install **Java JDK 11+** (required for Jenkins)
-- [ ] Install **Docker Desktop** (includes Docker Engine + Docker Compose)
-- [ ] Verify Docker: `docker --version` / `docker compose version`
-- [ ] Install **VS Code** with extensions: ESLint, Prettier, Docker, GitHub Actions
-- [ ] Create a **GitHub account** (if not existing) and set up SSH key or PAT
+- [x] Install **Git** and configure `user.name` / `user.email`
+- [x] Install **Java JDK 11+** (required for Jenkins)
+- [x] Install **Docker Desktop** (includes Docker Engine + Docker Compose)
+- [x] Verify Docker: `docker --version` / `docker compose version`
+- [x] Install **VS Code** with extensions: ESLint, Prettier, Docker, GitHub Actions
+- [x] Create a **GitHub account** (if not existing) and set up SSH key or PAT
 
 ---
 
 ## Phase 2: Project Initialization
 
-- [ ] Create project directory and switch to the correct Node version:
+- [x] Create project directory and switch to the correct Node version:
   ```bash
   mkdir cypress-automation-poc && cd cypress-automation-poc
   nvm use          # reads .nvmrc → switches to Node 20
   npm init -y
   ```
-- [ ] Install Cypress 15: `npm install cypress@15 --save-dev`
-- [ ] Install reporters:
+- [x] Install Cypress 15: `npm install cypress@15 --save-dev`
+- [x] Install reporters:
   ```bash
   npm install mochawesome mochawesome-merge mochawesome-report-generator --save-dev
   ```
-- [ ] Open Cypress to scaffold folders: `npx cypress open`
-- [ ] Create `.gitignore`:
+- [x] Open Cypress to scaffold folders: `npx cypress open`
+- [x] Create `.gitignore`:
   ```
   node_modules/
   cypress/videos/
@@ -57,7 +57,7 @@
   mochawesome-temp/
   .env
   ```
-- [ ] Initialize Git repo: `git init`
+- [x] Initialize Git repo: `git init`
 
 ---
 
@@ -119,7 +119,7 @@ cypress/
 
 ### 3b: Base Page Class
 
-- [ ] Create `cypress/pages/BasePage.js` with shared methods:
+- [x] Create `cypress/pages/BasePage.js` with shared methods:
 
 ```js
 class BasePage {
@@ -136,55 +136,55 @@ export default BasePage
 
 ### 3c: Page Object Classes
 
-- [ ] Create **LoginPage.js** — selectors + methods for login form, error messages, remember me
-- [ ] Create **HomePage.js** — navigation menu, hero section, footer links
-- [ ] Create **DashboardPage.js** — widgets, filters, charts, data tables
-- [ ] Create **UserManagementPage.js** — user list, create/edit/delete modals, role dropdowns
-- [ ] Create **ProfilePage.js** — profile form fields, avatar upload, save/cancel
-- [ ] Create **ContactPage.js** — contact form, validation messages, submit confirmation
-- [ ] Create **SignupPage.js** — registration form, password strength, terms checkbox
+- [x] Create **LoginPage.js** — selectors + methods for login form, error messages, remember me
+- [x] Create **HomePage.js** — navigation menu, hero section, footer links
+- [x] Create **DashboardPage.js** — widgets, filters, charts, data tables
+- [x] Create **UserManagementPage.js** — user list, create/edit/delete modals, role dropdowns
+- [x] Create **ProfilePage.js** — profile form fields, avatar upload, save/cancel
+- [x] Create **ContactPage.js** — contact form, validation messages, submit confirmation
+- [x] Create **SignupPage.js** — registration form, password strength, terms checkbox
 
 ### 3d: Test Suites Against Sample Application
 
-- [ ] **Smoke Suite** (3 specs — fast critical path):
+- [x] **Smoke Suite** (3 specs — fast critical path):
   - Login with valid credentials → verify dashboard loads
   - Navigate all main menu items → verify page titles
   - Homepage loads → verify key elements present
-- [ ] **Regression Suite — Authentication** (4 specs):
+- [x] **Regression Suite — Authentication** (4 specs):
   - Login with valid/invalid credentials, locked account, empty fields
   - Logout from different pages
   - Forgot password flow
   - Signup with valid/invalid data, duplicate email
-- [ ] **Regression Suite — Dashboard** (3 specs):
+- [x] **Regression Suite — Dashboard** (3 specs):
   - Widget data loads correctly
   - Filters apply and reset
   - Charts render with correct data
-- [ ] **Regression Suite — User Management** (4 specs):
+- [x] **Regression Suite — User Management** (4 specs):
   - Create user with all fields
   - Edit existing user details
   - Delete user with confirmation
   - Role assignment and permission validation
-- [ ] **Regression Suite — Forms** (3 specs):
+- [x] **Regression Suite — Forms** (3 specs):
   - Contact form submission with validation
   - Profile form update and save
   - Search form with results verification
-- [ ] **Regression Suite — API Validation** (2 specs):
+- [x] **Regression Suite — API Validation** (2 specs):
   - `cy.request()` for users CRUD endpoints
   - `cy.request()` for products endpoints
-- [ ] **Sanity Suite** (2 specs — health check):
+- [x] **Sanity Suite** (2 specs — health check):
   - App responds with 200
   - Critical user journey end-to-end
 
 ### 3e: Custom Commands
 
-- [ ] `cy.login(username, password)` — reusable login via UI
-- [ ] `cy.apiLogin(username, password)` — login via API (skip UI for speed)
-- [ ] `cy.resetState()` — clean test data before/after suite
-- [ ] `cy.waitForApi(alias)` — intercept and wait for API responses
+- [x] `cy.login(username, password)` — reusable login via UI
+- [x] `cy.apiLogin(username, password)` — login via API (skip UI for speed)
+- [x] `cy.resetState()` — clean test data before/after suite
+- [x] `cy.waitForApi(alias)` — intercept and wait for API responses
 
 ### 3f: Cypress Configuration
 
-- [ ] Configure `cypress.config.js`:
+- [x] Configure `cypress.config.js`:
 
 ```js
 module.exports = defineConfig({
@@ -207,7 +207,7 @@ module.exports = defineConfig({
 })
 ```
 
-- [ ] Add npm scripts in `package.json`:
+- [x] Add npm scripts in `package.json`:
 
 ```json
 "scripts": {
@@ -227,7 +227,7 @@ module.exports = defineConfig({
 }
 ```
 
-- [ ] Verify all suites pass locally: `npm run cy:all && npm run report`
+- [x] Verify all suites pass locally: `npm run cy:all && npm run report`
 
 ---
 
@@ -235,35 +235,35 @@ module.exports = defineConfig({
 
 ### 4a: Dockerfile
 
-- [ ] Create `Dockerfile` based on `cypress/included:15`
-- [ ] Copy project files, install dependencies
-- [ ] Set default `CMD` to run tests and generate report
+- [x] Create `Dockerfile` based on `cypress/included:15`
+- [x] Copy project files, install dependencies
+- [x] Set default `CMD` to run tests and generate report
 
 ### 4b: Docker Compose
 
-- [ ] Create `docker-compose.yml` with services:
+- [x] Create `docker-compose.yml` with services:
   - **app** — application under test
   - **cypress** — test runner, depends on `app`
-- [ ] Configure `depends_on` with health checks
-- [ ] Volume mounts for `mochawesome-report/`, `cypress/screenshots/`, `cypress/videos/`
+- [x] Configure `depends_on` with health checks
+- [x] Volume mounts for `mochawesome-report/`, `cypress/screenshots/`, `cypress/videos/`
 
 ### 4c: .dockerignore
 
-- [ ] Exclude `node_modules`, `.git`, `cypress/videos`, `cypress/screenshots`, `mochawesome-temp`
+- [x] Exclude `node_modules`, `.git`, `cypress/videos`, `cypress/screenshots`, `mochawesome-temp`
 
 ### 4d: Validate Docker Locally
 
-- [ ] `docker compose up --abort-on-container-exit --exit-code-from cypress`
-- [ ] Verify Mochawesome HTML report in mounted volume
+- [x] `docker compose up --abort-on-container-exit --exit-code-from cypress`
+- [x] Verify Mochawesome HTML report in mounted volume
 
 ---
 
 ## Phase 5: GitHub Repository Setup
 
-- [ ] Create GitHub repository and push codebase to `main`
-- [ ] Create **branch strategy**: `main`, `develop`, feature branches
-- [ ] Add **branch protection rules** on `main` — require status checks
-- [ ] Add **repository secrets**: `CYPRESS_BASE_URL`, app credentials
+- [x] Create GitHub repository and push codebase to `main`
+- [x] Create **branch strategy**: `main`, `develop`, feature branches
+- [x] Add **branch protection rules** on `main` — require status checks
+- [x] Add **repository secrets**: `CYPRESS_BASE_URL`, app credentials
 
 ---
 
@@ -271,9 +271,9 @@ module.exports = defineConfig({
 
 > **Role**: Quick gatekeeper. Runs smoke suite on every PR. Blocks merge if tests fail.
 
-- [ ] Create `.github/workflows/cypress-smoke.yml`
-- [ ] **Triggers**: `pull_request` to `main`/`develop`, `push` to `develop`
-- [ ] **Stages**:
+- [x] Create `.github/workflows/cypress-smoke.yml`
+- [x] **Triggers**: `pull_request` to `main`/`develop`, `push` to `develop`
+- [x] **Stages**:
   1. Checkout → `actions/checkout@v4`
   2. Setup Node → `actions/setup-node@v4` with caching
   3. Read `.nvmrc` and install matching Node version via `actions/setup-node@v4`
@@ -282,8 +282,8 @@ module.exports = defineConfig({
   6. Generate Mochawesome report → `npm run report`
   7. Upload artifacts → report + screenshots
   8. PR comment with test summary
-- [ ] Set as **required status check** on PRs to `main`
-- [ ] Add **Slack notification** on failure
+- [x] Set as **required status check** on PRs to `main`
+- [x] Add **Slack notification** on failure
 
 ---
 
@@ -293,14 +293,14 @@ module.exports = defineConfig({
 
 ### 7a: Install Jenkins via Docker
 
-- [ ] Run Jenkins in Docker:
+- [x] Run Jenkins in Docker:
   ```bash
   docker run -d -p 8080:8080 -p 50000:50000 \
     -v jenkins_home:/var/jenkins_home \
     --name jenkins jenkins/jenkins:lts
   ```
-- [ ] Complete setup wizard
-- [ ] Install plugins:
+- [x] Complete setup wizard
+- [x] Install plugins:
   - **NodeJS Plugin**
   - **Docker Pipeline Plugin**
   - **Git Plugin**
@@ -311,17 +311,17 @@ module.exports = defineConfig({
 
 ### 7b: Jenkins Global Configuration
 
-- [ ] Configure **NodeJS** under Global Tool Configuration — set version to match `.nvmrc` (v20)
+- [x] Configure **NodeJS** under Global Tool Configuration — set version to match `.nvmrc` (v20)
   > This ensures Jenkins uses the same Node version as local development (controlled by nvm/.nvmrc)
-- [ ] Configure **Docker** agent
-- [ ] Add **GitHub credentials**
-- [ ] Add **Cypress environment variables** as Jenkins secrets
+- [x] Configure **Docker** agent
+- [x] Add **GitHub credentials**
+- [x] Add **Cypress environment variables** as Jenkins secrets
 
 ### 7c: Jenkinsfile — Parallel Regression Pipeline
 
 > This is the key differentiator for the POC. Jenkins splits the 5 regression sub-suites across **parallel stages**, each running in its own **Docker container**.
 
-- [ ] Create `Jenkinsfile` with this structure:
+- [x] Create `Jenkinsfile` with this structure:
 
 ```
 Pipeline Stages:
@@ -371,12 +371,12 @@ Pipeline Stages:
 
 ### 7d: Parallel Execution Strategy Details
 
-- [ ] Each parallel stage runs inside its **own Docker container** (`cypress/included:15`)
-- [ ] Each container targets a **specific spec folder** (suite-level splitting)
-- [ ] All containers point to the **same application URL**
-- [ ] Each stage writes Mochawesome JSON to a **shared workspace** (via `stash`/`unstash` or volume)
-- [ ] After all parallel stages complete, a final stage **merges** all JSON reports into one HTML
-- [ ] **Execution time comparison for POC demo**:
+- [x] Each parallel stage runs inside its **own Docker container** (`cypress/included:15`)
+- [x] Each container targets a **specific spec folder** (suite-level splitting)
+- [x] All containers point to the **same application URL**
+- [x] Each stage writes Mochawesome JSON to a **shared workspace** (via `stash`/`unstash` or volume)
+- [x] After all parallel stages complete, a final stage **merges** all JSON reports into one HTML
+- [x] **Execution time comparison for POC demo**:
 
 | Mode | Auth | Dashboard | User Mgmt | Forms | API | Merge | Total |
 |---|---|---|---|---|---|---|---|
@@ -387,15 +387,15 @@ Pipeline Stages:
 
 ### 7e: Jenkinsfile.docker (Fully Docker-Based)
 
-- [ ] Alternative Jenkinsfile using `docker compose` to spin up app + parallel cypress containers
+- [x] Alternative Jenkinsfile using `docker compose` to spin up app + parallel cypress containers
 
 ### 7f: Jenkins Jobs
 
-- [ ] **Cypress-Parallel-Regression** → auto-trigger on merge to main (webhook)
+- [x] **Cypress-Parallel-Regression** → auto-trigger on merge to main (webhook)
   - Runs all 5 suites in parallel
-- [ ] **Cypress-Nightly** → cron `H 0 * * *`
+- [x] **Cypress-Nightly** → cron `H 0 * * *`
   - Full parallel regression across all browsers
-- [ ] **Cypress-Parameterized** → manual trigger with parameters:
+- [x] **Cypress-Parameterized** → manual trigger with parameters:
   - Environment: `dev` / `staging` / `prod`
   - Browser: `chrome` / `firefox` / `electron`
   - Suite: `smoke` / `regression` / `all` / individual suites
@@ -403,8 +403,8 @@ Pipeline Stages:
 
 ### 7g: GitHub ↔ Jenkins Integration
 
-- [ ] Configure **GitHub Webhook** → Jenkins (triggers on push to `main`)
-- [ ] Add Jenkins build status badge in repo README
+- [x] Configure **GitHub Webhook** → Jenkins (triggers on push to `main`)
+- [x] Add Jenkins build status badge in repo README
 
 ---
 
@@ -418,19 +418,19 @@ Pipeline Stages:
 | **Jenkins Parallel** | Merged report from all parallel stages into one HTML |
 | **GitHub Pages** (optional) | Auto-deploy latest report for client access |
 
-- [ ] Each parallel Jenkins stage produces individual Mochawesome JSONs
-- [ ] Final stage merges all JSONs → single consolidated HTML
-- [ ] Screenshots embedded inline in report on failure
-- [ ] Videos archived as separate downloadable artifacts
+- [x] Each parallel Jenkins stage produces individual Mochawesome JSONs
+- [x] Final stage merges all JSONs → single consolidated HTML
+- [x] Screenshots embedded inline in report on failure
+- [x] Videos archived as separate downloadable artifacts
 
 ---
 
 ## Phase 9: Notifications
 
-- [ ] **GitHub Actions** → Slack on smoke failure
-- [ ] **Jenkins** → Slack on regression failure (includes parallel stage breakdown)
-- [ ] **Jenkins** → Email with Mochawesome report link
-- [ ] Unified Slack channel `#qa-automation`
+- [x] **GitHub Actions** → Slack on smoke failure
+- [x] **Jenkins** → Slack on regression failure (includes parallel stage breakdown)
+- [x] **Jenkins** → Email with Mochawesome report link
+- [x] Unified Slack channel `#qa-automation`
 
 ---
 
@@ -460,12 +460,12 @@ Pipeline Stages:
 
 ### 10c: Presentation Materials
 
-- [ ] **Architecture diagram** (see below)
-- [ ] **POM structure diagram** — showing class inheritance and test-to-page mapping
-- [ ] **Parallel vs Sequential comparison chart** — side-by-side execution timeline
-- [ ] **Comparison slide**: Cypress vs Selenium vs Playwright
-- [ ] **Hybrid justification**: GitHub Actions (fast gate) + Jenkins (parallel regression)
-- [ ] **Scaling recommendations**: add more parallel stages, add nodes, add browsers
+- [x] **Architecture diagram** (see below)
+- [x] **POM structure diagram** — showing class inheritance and test-to-page mapping
+- [x] **Parallel vs Sequential comparison chart** — side-by-side execution timeline
+- [x] **Comparison slide**: Cypress vs Selenium vs Playwright
+- [x] **Hybrid justification**: GitHub Actions (fast gate) + Jenkins (parallel regression)
+- [x] **Scaling recommendations**: add more parallel stages, add nodes, add browsers
 
 ---
 
