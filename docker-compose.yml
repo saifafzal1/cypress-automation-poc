@@ -1,0 +1,141 @@
+version: '3.8'
+
+services:
+  # ── Application Under Test ──
+  # Replace this with your actual application image/build
+  app:
+    image: nginx:alpine  # Placeholder — swap with your app image
+    # build:
+    #   context: ../your-app
+    #   dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ── Cypress Test Runner ──
+  cypress:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      - CYPRESS_BASE_URL=http://app:80
+    volumes:
+      # Mount report/artifact directories to host for access after run
+      - ./mochawesome-report:/app/mochawesome-report
+      - ./mochawesome-temp:/app/mochawesome-temp
+      - ./cypress/videos:/app/cypress/videos
+      - ./cypress/screenshots:/app/cypress/screenshots
+
+  # ── Parallel Runners (for Jenkins parallel demo) ──
+  cypress-auth:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      - CYPRESS_BASE_URL=http://app:80
+    command: >
+      sh -c "npx cypress run --spec 'cypress/e2e/regression/authentication/**'
+      && npx mochawesome-merge mochawesome-temp/*.json -o mochawesome-report/auth-merged.json
+      && npx marge mochawesome-report/auth-merged.json -f auth-report -o mochawesome-report"
+    volumes:
+      - ./mochawesome-report:/app/mochawesome-report
+      - ./mochawesome-temp/auth:/app/mochawesome-temp
+      - ./cypress/videos/auth:/app/cypress/videos
+      - ./cypress/screenshots/auth:/app/cypress/screenshots
+    profiles:
+      - parallel
+
+  cypress-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      - CYPRESS_BASE_URL=http://app:80
+    command: >
+      sh -c "npx cypress run --spec 'cypress/e2e/regression/dashboard/**'
+      && npx mochawesome-merge mochawesome-temp/*.json -o mochawesome-report/dashboard-merged.json
+      && npx marge mochawesome-report/dashboard-merged.json -f dashboard-report -o mochawesome-report"
+    volumes:
+      - ./mochawesome-report:/app/mochawesome-report
+      - ./mochawesome-temp/dashboard:/app/mochawesome-temp
+      - ./cypress/videos/dashboard:/app/cypress/videos
+      - ./cypress/screenshots/dashboard:/app/cypress/screenshots
+    profiles:
+      - parallel
+
+  cypress-users:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      - CYPRESS_BASE_URL=http://app:80
+    command: >
+      sh -c "npx cypress run --spec 'cypress/e2e/regression/user-management/**'
+      && npx mochawesome-merge mochawesome-temp/*.json -o mochawesome-report/users-merged.json
+      && npx marge mochawesome-report/users-merged.json -f users-report -o mochawesome-report"
+    volumes:
+      - ./mochawesome-report:/app/mochawesome-report
+      - ./mochawesome-temp/users:/app/mochawesome-temp
+      - ./cypress/videos/users:/app/cypress/videos
+      - ./cypress/screenshots/users:/app/cypress/screenshots
+    profiles:
+      - parallel
+
+  cypress-forms:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      - CYPRESS_BASE_URL=http://app:80
+    command: >
+      sh -c "npx cypress run --spec 'cypress/e2e/regression/forms/**'
+      && npx mochawesome-merge mochawesome-temp/*.json -o mochawesome-report/forms-merged.json
+      && npx marge mochawesome-report/forms-merged.json -f forms-report -o mochawesome-report"
+    volumes:
+      - ./mochawesome-report:/app/mochawesome-report
+      - ./mochawesome-temp/forms:/app/mochawesome-temp
+      - ./cypress/videos/forms:/app/cypress/videos
+      - ./cypress/screenshots/forms:/app/cypress/screenshots
+    profiles:
+      - parallel
+
+  cypress-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      - CYPRESS_BASE_URL=http://app:80
+    command: >
+      sh -c "npx cypress run --spec 'cypress/e2e/regression/api-validation/**'
+      && npx mochawesome-merge mochawesome-temp/*.json -o mochawesome-report/api-merged.json
+      && npx marge mochawesome-report/api-merged.json -f api-report -o mochawesome-report"
+    volumes:
+      - ./mochawesome-report:/app/mochawesome-report
+      - ./mochawesome-temp/api:/app/mochawesome-temp
+      - ./cypress/videos/api:/app/cypress/videos
+      - ./cypress/screenshots/api:/app/cypress/screenshots
+    profiles:
+      - parallel

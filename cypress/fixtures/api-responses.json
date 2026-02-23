@@ -1,0 +1,27 @@
+{
+  "users": {
+    "endpoint": "/api/users",
+    "createPayload": {
+      "name": "API Test User",
+      "email": "api.test@example.com",
+      "role": "Viewer"
+    },
+    "updatePayload": {
+      "name": "API Test User Updated",
+      "email": "api.updated@example.com"
+    }
+  },
+  "products": {
+    "endpoint": "/api/products",
+    "createPayload": {
+      "name": "Test Product",
+      "price": 29.99,
+      "category": "Electronics",
+      "stock": 100
+    },
+    "updatePayload": {
+      "name": "Updated Product",
+      "price": 39.99
+    }
+  }
+}

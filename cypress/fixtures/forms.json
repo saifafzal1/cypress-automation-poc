@@ -1,0 +1,35 @@
+{
+  "contactForm": {
+    "valid": {
+      "name": "Test User",
+      "email": "test@example.com",
+      "subject": "POC Inquiry",
+      "message": "This is a test message for the contact form validation."
+    },
+    "invalidEmail": {
+      "name": "Test User",
+      "email": "invalid-email",
+      "subject": "Test",
+      "message": "Testing with invalid email."
+    },
+    "empty": {
+      "name": "",
+      "email": "",
+      "subject": "",
+      "message": ""
+    }
+  },
+  "profileForm": {
+    "updated": {
+      "name": "Updated User",
+      "email": "updated@example.com",
+      "phone": "+1-555-0123",
+      "bio": "Updated bio for testing purposes."
+    }
+  },
+  "searchForm": {
+    "validQuery": "automation",
+    "noResultsQuery": "xyznonexistent123",
+    "specialCharsQuery": "<script>alert('test')</script>"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "widgets": {
+    "totalUsers": "1,245",
+    "activeUsers": "892",
+    "revenue": "$45,230",
+    "orders": "326"
+  },
+  "filters": {
+    "dateRange": "Last 30 Days",
+    "category": "Electronics",
+    "status": "Active"
+  },
+  "chartCount": 3,
+  "tableRowCount": 10
+}

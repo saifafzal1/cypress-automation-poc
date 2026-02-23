@@ -1,0 +1,30 @@
+{
+  "name": "cypress-automation-poc",
+  "version": "1.0.0",
+  "description": "Cypress 15 Automation POC with POM, Docker, Jenkins (Parallel) and GitHub Actions",
+  "main": "index.js",
+  "scripts": {
+    "cy:open": "cypress open",
+    "cy:smoke": "cypress run --spec 'cypress/e2e/smoke/**'",
+    "cy:sanity": "cypress run --spec 'cypress/e2e/sanity/**'",
+    "cy:regression": "cypress run --spec 'cypress/e2e/regression/**'",
+    "cy:regression:auth": "cypress run --spec 'cypress/e2e/regression/authentication/**'",
+    "cy:regression:dashboard": "cypress run --spec 'cypress/e2e/regression/dashboard/**'",
+    "cy:regression:users": "cypress run --spec 'cypress/e2e/regression/user-management/**'",
+    "cy:regression:forms": "cypress run --spec 'cypress/e2e/regression/forms/**'",
+    "cy:regression:api": "cypress run --spec 'cypress/e2e/regression/api-validation/**'",
+    "cy:all": "cypress run",
+    "report:merge": "mochawesome-merge mochawesome-temp/*.json -o mochawesome-report/merged.json",
+    "report:generate": "marge mochawesome-report/merged.json -f report -o mochawesome-report",
+    "report": "npm run report:merge && npm run report:generate"
+  },
+  "keywords": ["cypress", "automation", "pom", "jenkins", "docker"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "cypress": "^15.10.0",
+    "mochawesome": "^7.1.4",
+    "mochawesome-merge": "^4.4.1",
+    "mochawesome-report-generator": "^6.3.2"
+  }
+}
