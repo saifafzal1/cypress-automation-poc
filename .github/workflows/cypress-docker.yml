@@ -1,0 +1,92 @@
+name: Cypress Docker Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Test suite to run'
+        required: true
+        default: 'smoke'
+        type: choice
+        options:
+          - smoke
+          - sanity
+          - regression
+          - all
+
+jobs:
+  docker-tests:
+    name: Docker Tests (${{ github.event.inputs.suite }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # ── 1. Checkout code ──
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── 2. Build Docker image ──
+      - name: Build Cypress Docker image
+        run: docker build -t cypress-tests .
+
+      # ── 3. Create output directories ──
+      - name: Create artifact directories
+        run: |
+          mkdir -p mochawesome-report mochawesome-temp cypress/videos cypress/screenshots
+
+      # ── 4. Run tests in Docker ──
+      - name: Run Cypress tests in Docker
+        run: |
+          SUITE="${{ github.event.inputs.suite }}"
+          case $SUITE in
+            smoke)
+              SPEC="cypress/e2e/smoke/**"
+              ;;
+            sanity)
+              SPEC="cypress/e2e/sanity/**"
+              ;;
+            regression)
+              SPEC="cypress/e2e/regression/**"
+              ;;
+            all)
+              SPEC="cypress/e2e/**"
+              ;;
+          esac
+
+          docker run --rm \
+            -v ${{ github.workspace }}/mochawesome-report:/app/mochawesome-report \
+            -v ${{ github.workspace }}/mochawesome-temp:/app/mochawesome-temp \
+            -v ${{ github.workspace }}/cypress/videos:/app/cypress/videos \
+            -v ${{ github.workspace }}/cypress/screenshots:/app/cypress/screenshots \
+            -e CYPRESS_BASE_URL=${{ secrets.CYPRESS_BASE_URL }} \
+            -e CYPRESS_USERNAME=${{ secrets.CYPRESS_USERNAME }} \
+            -e CYPRESS_PASSWORD=${{ secrets.CYPRESS_PASSWORD }} \
+            cypress-tests \
+            sh -c "npx cypress run --spec '${SPEC}' && npx mochawesome-merge mochawesome-temp/*.json -o mochawesome-report/merged.json && npx marge mochawesome-report/merged.json -f report -o mochawesome-report"
+
+      # ── 5. Upload Mochawesome report ──
+      - name: Upload Mochawesome report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mochawesome-report-docker
+          path: mochawesome-report/
+          retention-days: 30
+
+      # ── 6. Upload screenshots on failure ──
+      - name: Upload screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots-docker
+          path: cypress/screenshots/
+          retention-days: 30
+
+      # ── 7. Upload videos ──
+      - name: Upload videos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-videos-docker
+          path: cypress/videos/
+          retention-days: 15
