@@ -16,7 +16,12 @@
     "cy:all": "cypress run",
     "report:merge": "mochawesome-merge mochawesome-temp/*.json -o mochawesome-report/merged.json",
     "report:generate": "marge mochawesome-report/merged.json -f report -o mochawesome-report",
-    "report": "npm run report:merge && npm run report:generate"
+    "report": "npm run report:merge && npm run report:generate",
+    "report:full": "./scripts/generate-report.sh",
+    "report:clean": "rm -rf mochawesome-temp mochawesome-report",
+    "precy:all": "npm run report:clean",
+    "precy:smoke": "npm run report:clean",
+    "precy:regression": "npm run report:clean"
   },
   "keywords": ["cypress", "automation", "pom", "jenkins", "docker"],
   "author": "",
