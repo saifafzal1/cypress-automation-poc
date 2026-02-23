@@ -1,0 +1,233 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Target environment')
+        choice(name: 'SUITE', choices: ['regression', 'smoke', 'sanity', 'all'], description: 'Test suite to run')
+        booleanParam(name: 'PARALLEL', defaultValue: true, description: 'Run regression suites in parallel (Docker Compose)')
+    }
+
+    environment {
+        CYPRESS_BASE_URL = credentials('CYPRESS_BASE_URL')
+        CYPRESS_USERNAME = credentials('CYPRESS_USERNAME')
+        CYPRESS_PASSWORD = credentials('CYPRESS_PASSWORD')
+    }
+
+    options {
+        timestamps()
+        timeout(time: 60, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+    }
+
+    stages {
+
+        // ── Stage 1: Checkout ──
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        // ── Stage 2: Build Docker Image ──
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t cypress-tests .'
+            }
+        }
+
+        // ── Stage 3: Prepare Directories ──
+        stage('Prepare') {
+            steps {
+                sh '''
+                    rm -rf mochawesome-temp mochawesome-report
+                    mkdir -p mochawesome-temp mochawesome-report cypress/videos cypress/screenshots
+                '''
+            }
+        }
+
+        // ── Stage 4a: Sequential Run (smoke / sanity / all / regression non-parallel) ──
+        stage('Run Sequential') {
+            when {
+                expression { params.SUITE != 'regression' || !params.PARALLEL }
+            }
+            steps {
+                script {
+                    def specPath = ''
+                    switch (params.SUITE) {
+                        case 'smoke':      specPath = 'cypress/e2e/smoke/**'; break
+                        case 'sanity':     specPath = 'cypress/e2e/sanity/**'; break
+                        case 'regression': specPath = 'cypress/e2e/regression/**'; break
+                        case 'all':        specPath = 'cypress/e2e/**'; break
+                    }
+                    sh """
+                        docker run --rm \
+                            --network host \
+                            -v \${WORKSPACE}/mochawesome-report:/app/mochawesome-report \
+                            -v \${WORKSPACE}/mochawesome-temp:/app/mochawesome-temp \
+                            -v \${WORKSPACE}/cypress/videos:/app/cypress/videos \
+                            -v \${WORKSPACE}/cypress/screenshots:/app/cypress/screenshots \
+                            -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
+                            -e CYPRESS_USERNAME=${CYPRESS_USERNAME} \
+                            -e CYPRESS_PASSWORD=${CYPRESS_PASSWORD} \
+                            cypress-tests \
+                            sh -c "npx cypress run --spec '${specPath}' \
+                                --reporter mochawesome \
+                                --reporter-options reportDir=mochawesome-temp,overwrite=false,html=false,json=true"
+                    """
+                }
+            }
+        }
+
+        // ── Stage 4b: Parallel Regression (5 Docker containers) ──
+        stage('Run Parallel Regression') {
+            when {
+                expression { params.SUITE == 'regression' && params.PARALLEL }
+            }
+            parallel {
+
+                stage('Auth') {
+                    steps {
+                        sh """
+                            docker run --rm \
+                                --network host \
+                                -v \${WORKSPACE}/mochawesome-temp/auth:/app/mochawesome-temp \
+                                -v \${WORKSPACE}/cypress/screenshots/auth:/app/cypress/screenshots \
+                                -v \${WORKSPACE}/cypress/videos/auth:/app/cypress/videos \
+                                -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
+                                -e CYPRESS_USERNAME=${CYPRESS_USERNAME} \
+                                -e CYPRESS_PASSWORD=${CYPRESS_PASSWORD} \
+                                cypress-tests \
+                                sh -c "npx cypress run --spec 'cypress/e2e/regression/authentication/**' \
+                                    --reporter mochawesome \
+                                    --reporter-options reportDir=mochawesome-temp,overwrite=false,html=false,json=true"
+                        """
+                    }
+                }
+
+                stage('Dashboard') {
+                    steps {
+                        sh """
+                            docker run --rm \
+                                --network host \
+                                -v \${WORKSPACE}/mochawesome-temp/dashboard:/app/mochawesome-temp \
+                                -v \${WORKSPACE}/cypress/screenshots/dashboard:/app/cypress/screenshots \
+                                -v \${WORKSPACE}/cypress/videos/dashboard:/app/cypress/videos \
+                                -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
+                                -e CYPRESS_USERNAME=${CYPRESS_USERNAME} \
+                                -e CYPRESS_PASSWORD=${CYPRESS_PASSWORD} \
+                                cypress-tests \
+                                sh -c "npx cypress run --spec 'cypress/e2e/regression/dashboard/**' \
+                                    --reporter mochawesome \
+                                    --reporter-options reportDir=mochawesome-temp,overwrite=false,html=false,json=true"
+                        """
+                    }
+                }
+
+                stage('User Mgmt') {
+                    steps {
+                        sh """
+                            docker run --rm \
+                                --network host \
+                                -v \${WORKSPACE}/mochawesome-temp/users:/app/mochawesome-temp \
+                                -v \${WORKSPACE}/cypress/screenshots/users:/app/cypress/screenshots \
+                                -v \${WORKSPACE}/cypress/videos/users:/app/cypress/videos \
+                                -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
+                                -e CYPRESS_USERNAME=${CYPRESS_USERNAME} \
+                                -e CYPRESS_PASSWORD=${CYPRESS_PASSWORD} \
+                                cypress-tests \
+                                sh -c "npx cypress run --spec 'cypress/e2e/regression/user-management/**' \
+                                    --reporter mochawesome \
+                                    --reporter-options reportDir=mochawesome-temp,overwrite=false,html=false,json=true"
+                        """
+                    }
+                }
+
+                stage('Forms') {
+                    steps {
+                        sh """
+                            docker run --rm \
+                                --network host \
+                                -v \${WORKSPACE}/mochawesome-temp/forms:/app/mochawesome-temp \
+                                -v \${WORKSPACE}/cypress/screenshots/forms:/app/cypress/screenshots \
+                                -v \${WORKSPACE}/cypress/videos/forms:/app/cypress/videos \
+                                -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
+                                -e CYPRESS_USERNAME=${CYPRESS_USERNAME} \
+                                -e CYPRESS_PASSWORD=${CYPRESS_PASSWORD} \
+                                cypress-tests \
+                                sh -c "npx cypress run --spec 'cypress/e2e/regression/forms/**' \
+                                    --reporter mochawesome \
+                                    --reporter-options reportDir=mochawesome-temp,overwrite=false,html=false,json=true"
+                        """
+                    }
+                }
+
+                stage('API') {
+                    steps {
+                        sh """
+                            docker run --rm \
+                                --network host \
+                                -v \${WORKSPACE}/mochawesome-temp/api:/app/mochawesome-temp \
+                                -v \${WORKSPACE}/cypress/screenshots/api:/app/cypress/screenshots \
+                                -v \${WORKSPACE}/cypress/videos/api:/app/cypress/videos \
+                                -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
+                                -e CYPRESS_USERNAME=${CYPRESS_USERNAME} \
+                                -e CYPRESS_PASSWORD=${CYPRESS_PASSWORD} \
+                                cypress-tests \
+                                sh -c "npx cypress run --spec 'cypress/e2e/regression/api-validation/**' \
+                                    --reporter mochawesome \
+                                    --reporter-options reportDir=mochawesome-temp,overwrite=false,html=false,json=true"
+                        """
+                    }
+                }
+
+            } // end parallel
+        }
+
+        // ── Stage 5: Merge & Generate Report ──
+        stage('Generate Report') {
+            steps {
+                sh '''
+                    docker run --rm \
+                        -v ${WORKSPACE}/mochawesome-temp:/app/mochawesome-temp \
+                        -v ${WORKSPACE}/mochawesome-report:/app/mochawesome-report \
+                        cypress-tests \
+                        sh -c "npx mochawesome-merge 'mochawesome-temp/**/*.json' -o mochawesome-report/merged.json \
+                            && npx marge mochawesome-report/merged.json -f report -o mochawesome-report"
+                '''
+            }
+        }
+
+        // ── Stage 6: Publish Report ──
+        stage('Publish Report') {
+            steps {
+                publishHTML(target: [
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: 'mochawesome-report',
+                    reportFiles: 'report.html',
+                    reportName: 'Cypress Mochawesome Report',
+                    reportTitles: 'Cypress Test Results'
+                ])
+            }
+        }
+
+    } // end stages
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'mochawesome-report/**', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'cypress/screenshots/**', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'cypress/videos/**', allowEmptyArchive: true
+        }
+        success {
+            echo '✅ All Cypress tests passed!'
+        }
+        failure {
+            echo '❌ Some Cypress tests failed!'
+        }
+        cleanup {
+            cleanWs()
+        }
+    }
+}
