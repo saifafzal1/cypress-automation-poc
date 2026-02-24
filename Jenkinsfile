@@ -53,7 +53,7 @@ pipeline {
                     agent {
                         docker {
                             image 'cypress/included:15.3.0'
-                            args '-v ${WORKSPACE}:/app -w /app'
+                            args '--entrypoint='
                         }
                     }
                     steps {
@@ -90,7 +90,7 @@ pipeline {
                     agent {
                         docker {
                             image 'cypress/included:15.3.0'
-                            args '-v ${WORKSPACE}:/app -w /app'
+                            args '--entrypoint='
                         }
                     }
                     steps {
@@ -116,7 +116,7 @@ pipeline {
                             agent {
                                 docker {
                                     image 'cypress/included:15.3.0'
-                                    args '-v ${WORKSPACE}:/app -w /app'
+                                    args '--entrypoint='
                                 }
                             }
                             steps {
@@ -140,7 +140,7 @@ pipeline {
                             agent {
                                 docker {
                                     image 'cypress/included:15.3.0'
-                                    args '-v ${WORKSPACE}:/app -w /app'
+                                    args '--entrypoint='
                                 }
                             }
                             steps {
@@ -164,7 +164,7 @@ pipeline {
                             agent {
                                 docker {
                                     image 'cypress/included:15.3.0'
-                                    args '-v ${WORKSPACE}:/app -w /app'
+                                    args '--entrypoint='
                                 }
                             }
                             steps {
@@ -188,7 +188,7 @@ pipeline {
                             agent {
                                 docker {
                                     image 'cypress/included:15.3.0'
-                                    args '-v ${WORKSPACE}:/app -w /app'
+                                    args '--entrypoint='
                                 }
                             }
                             steps {
@@ -212,7 +212,7 @@ pipeline {
                             agent {
                                 docker {
                                     image 'cypress/included:15.3.0'
-                                    args '-v ${WORKSPACE}:/app -w /app'
+                                    args '--entrypoint='
                                 }
                             }
                             steps {
@@ -257,7 +257,7 @@ pipeline {
             agent {
                 docker {
                     image 'cypress/included:15.3.0'
-                    args '-v ${WORKSPACE}:/app -w /app'
+                    args '--entrypoint='
                 }
             }
             steps {
