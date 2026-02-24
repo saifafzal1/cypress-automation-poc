@@ -102,12 +102,12 @@ pipeline {
             steps {
                 sh '''
                     echo "Generating benchmark comparison report..."
-                    docker run --rm \
-                        -v ${WORKSPACE}:/app \
-                        -w /app \
-                        --entrypoint="" \
-                        node:20-alpine \
-                        node scripts/generate-benchmark-report.js
+                    CONTAINER_ID=$(docker create --entrypoint="" node:20-alpine node /app/scripts/generate-benchmark-report.js)
+                    docker cp ${WORKSPACE}/scripts ${CONTAINER_ID}:/app/scripts
+                    docker cp ${WORKSPACE}/benchmark-results ${CONTAINER_ID}:/app/benchmark-results
+                    docker start -a ${CONTAINER_ID}
+                    docker cp ${CONTAINER_ID}:/app/benchmark-report/index.html ${WORKSPACE}/benchmark-report/index.html
+                    docker rm ${CONTAINER_ID}
                 '''
             }
         }
@@ -146,6 +146,7 @@ pipeline {
 // ── Shared function: Run benchmark for a specific Cypress version ──
 def runBenchmark(String cypressVersion) {
     def versionDir = "benchmark-results/v${cypressVersion}"
+    def containerName = "cypress-bench-${cypressVersion.replace('.', '-')}"
 
     sh """
         mkdir -p ${versionDir}
@@ -157,16 +158,15 @@ def runBenchmark(String cypressVersion) {
         # Record start time
         START_TIME=\$(date +%s%N)
 
-        docker run --rm \
-            -v \${WORKSPACE}/cypress:/app/cypress \
-            -v \${WORKSPACE}/cypress.config.js:/app/cypress.config.js \
-            -v \${WORKSPACE}/${versionDir}:/app/benchmark-output \
+        # Create container, copy files in, run tests, copy results out
+        docker create --name ${containerName} \
             -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
             -w /app \
             --entrypoint="" \
             cypress/included:${cypressVersion} \
             sh -c "
                 npm install mochawesome@7 mochawesome-merge@4 mochawesome-report-generator@6 --legacy-peer-deps 2>/dev/null
+                mkdir -p benchmark-output
                 npx cypress run \
                     --spec 'cypress/e2e/smoke/**' \
                     --reporter mochawesome \
@@ -174,51 +174,63 @@ def runBenchmark(String cypressVersion) {
                     || true
             "
 
+        # Copy test files into container
+        docker cp \${WORKSPACE}/cypress ${containerName}:/app/cypress
+        docker cp \${WORKSPACE}/cypress.config.js ${containerName}:/app/cypress.config.js
+
+        # Run the container
+        docker start -a ${containerName} || true
+
+        # Copy results out
+        docker cp ${containerName}:/app/benchmark-output/. \${WORKSPACE}/${versionDir}/ 2>/dev/null || true
+
+        # Cleanup container
+        docker rm -f ${containerName} 2>/dev/null || true
+
         # Record end time
         END_TIME=\$(date +%s%N)
         TOTAL_TIME_MS=\$(( (END_TIME - START_TIME) / 1000000 ))
-
         echo "Container total time: \${TOTAL_TIME_MS}ms"
 
-        # Extract metrics using node inside a container (Jenkins host has no node)
-        docker run --rm \
-            -v \${WORKSPACE}/benchmark-results:/data \
-            --entrypoint="" \
-            node:20-alpine \
-            node -e "
-                const fs = require('fs');
-                const dir = '/data/v${cypressVersion}';
-                let files = [];
-                try { files = fs.readdirSync(dir).filter(f => f.endsWith('.json')).map(f => dir + '/' + f); } catch(e) {}
+        # Extract metrics using node in a container
+        EXTRACT_CONTAINER=\$(docker create --entrypoint="" node:20-alpine node -e "
+            const fs = require('fs');
+            const dir = '/data/v${cypressVersion}';
+            let files = [];
+            try { files = fs.readdirSync(dir).filter(f => f.endsWith('.json')).map(f => dir + '/' + f); } catch(e) {}
 
-                let totalDuration = 0, totalTests = 0, totalPasses = 0, totalFailures = 0, totalPending = 0;
-                files.forEach(file => {
-                    try {
-                        const s = JSON.parse(fs.readFileSync(file, 'utf8')).stats || {};
-                        totalDuration += (s.duration || 0);
-                        totalTests += (s.tests || 0);
-                        totalPasses += (s.passes || 0);
-                        totalFailures += (s.failures || 0);
-                        totalPending += (s.pending || 0);
-                    } catch(e) {}
-                });
+            let totalDuration = 0, totalTests = 0, totalPasses = 0, totalFailures = 0, totalPending = 0;
+            files.forEach(file => {
+                try {
+                    const s = JSON.parse(fs.readFileSync(file, 'utf8')).stats || {};
+                    totalDuration += (s.duration || 0);
+                    totalTests += (s.tests || 0);
+                    totalPasses += (s.passes || 0);
+                    totalFailures += (s.failures || 0);
+                    totalPending += (s.pending || 0);
+                } catch(e) {}
+            });
 
-                const entry = {
-                    version: '${cypressVersion}',
-                    duration: totalDuration,
-                    totalTime: \${TOTAL_TIME_MS},
-                    tests: totalTests,
-                    passes: totalPasses,
-                    failures: totalFailures,
-                    pending: totalPending
-                };
-                if (totalTests === 0) entry.error = 'No results collected';
+            const entry = {
+                version: '${cypressVersion}',
+                duration: totalDuration,
+                totalTime: \${TOTAL_TIME_MS},
+                tests: totalTests,
+                passes: totalPasses,
+                failures: totalFailures,
+                pending: totalPending
+            };
+            if (totalTests === 0) entry.error = 'No results collected';
 
-                console.log('Cypress ${cypressVersion}: ' + (totalDuration/1000).toFixed(1) + 's test time, ' + totalTests + ' tests');
+            console.log('Cypress ${cypressVersion}: ' + (totalDuration/1000).toFixed(1) + 's test time, ' + totalTests + ' tests');
 
-                const metrics = JSON.parse(fs.readFileSync('/data/metrics.json', 'utf8'));
-                metrics.push(entry);
-                fs.writeFileSync('/data/metrics.json', JSON.stringify(metrics, null, 2));
-            "
+            const metrics = JSON.parse(fs.readFileSync('/data/metrics.json', 'utf8'));
+            metrics.push(entry);
+            fs.writeFileSync('/data/metrics.json', JSON.stringify(metrics, null, 2));
+        ")
+        docker cp \${WORKSPACE}/benchmark-results \${EXTRACT_CONTAINER}:/data
+        docker start -a \${EXTRACT_CONTAINER}
+        docker cp \${EXTRACT_CONTAINER}:/data/metrics.json \${WORKSPACE}/benchmark-results/metrics.json
+        docker rm -f \${EXTRACT_CONTAINER} 2>/dev/null || true
     """
 }
