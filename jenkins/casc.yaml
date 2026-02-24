@@ -111,3 +111,22 @@ jobs:
           }
         }
       }
+
+  - script: |
+      pipelineJob('Cypress-Tests/Version-Benchmark') {
+        description('Benchmark Cypress performance across versions 9.7 to 15.x — generates comparison dashboard with ROI analysis')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('https://github.com/saifafzal1/cypress-automation-poc.git')
+                }
+                branches('*/main')
+              }
+            }
+            scriptPath('Jenkinsfile.benchmark')
+            lightweight(true)
+          }
+        }
+      }

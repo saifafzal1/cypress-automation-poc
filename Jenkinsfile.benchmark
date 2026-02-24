@@ -1,0 +1,233 @@
+pipeline {
+    agent any
+
+    environment {
+        CYPRESS_BASE_URL = 'https://katalon-demo-cura.herokuapp.com'
+    }
+
+    options {
+        timestamps()
+        timeout(time: 120, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    stages {
+
+        // ── Stage 1: Checkout ──
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        // ── Stage 2: Prepare ──
+        stage('Prepare') {
+            steps {
+                sh '''
+                    rm -rf benchmark-results benchmark-report
+                    mkdir -p benchmark-results benchmark-report
+                    echo "[]" > benchmark-results/metrics.json
+                '''
+            }
+        }
+
+        // ── Benchmark Stages: One per Cypress version ──
+
+        stage('Cypress 9.7.0') {
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    runBenchmark('9.7.0')
+                }
+            }
+        }
+
+        stage('Cypress 10.0.0') {
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    runBenchmark('10.0.0')
+                }
+            }
+        }
+
+        stage('Cypress 11.0.0') {
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    runBenchmark('11.0.0')
+                }
+            }
+        }
+
+        stage('Cypress 12.0.0') {
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    runBenchmark('12.0.0')
+                }
+            }
+        }
+
+        stage('Cypress 13.0.0') {
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    runBenchmark('13.0.0')
+                }
+            }
+        }
+
+        stage('Cypress 13.6.6') {
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    runBenchmark('13.6.6')
+                }
+            }
+        }
+
+        stage('Cypress 14.0.0') {
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    runBenchmark('14.0.0')
+                }
+            }
+        }
+
+        stage('Cypress 15.3.0') {
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    runBenchmark('15.3.0')
+                }
+            }
+        }
+
+        // ── Generate Benchmark Report ──
+        stage('Generate Report') {
+            steps {
+                sh '''
+                    echo "Generating benchmark comparison report..."
+                    node scripts/generate-benchmark-report.js
+                '''
+            }
+        }
+
+        // ── Publish Report ──
+        stage('Publish Report') {
+            steps {
+                publishHTML(target: [
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: 'benchmark-report',
+                    reportFiles: 'index.html',
+                    reportName: 'Cypress Version Benchmark',
+                    reportTitles: 'Version Performance Comparison'
+                ])
+            }
+        }
+
+    } // end stages
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'benchmark-results/**', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'benchmark-report/**', allowEmptyArchive: true
+        }
+        success {
+            echo 'Benchmark completed successfully!'
+        }
+        cleanup {
+            cleanWs()
+        }
+    }
+}
+
+// ── Shared function: Run benchmark for a specific Cypress version ──
+def runBenchmark(String cypressVersion) {
+    def versionDir = "benchmark-results/v${cypressVersion}"
+
+    sh """
+        mkdir -p ${versionDir}
+
+        echo "========================================"
+        echo "  Benchmarking Cypress ${cypressVersion}"
+        echo "========================================"
+
+        # Record start time
+        START_TIME=\$(date +%s%N)
+
+        docker run --rm \
+            -v \${WORKSPACE}/cypress:/app/cypress \
+            -v \${WORKSPACE}/cypress.config.js:/app/cypress.config.js \
+            -v \${WORKSPACE}/${versionDir}:/app/benchmark-output \
+            -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
+            -w /app \
+            --entrypoint="" \
+            cypress/included:${cypressVersion} \
+            sh -c "
+                npm install mochawesome@7 mochawesome-merge@4 mochawesome-report-generator@6 --legacy-peer-deps 2>/dev/null
+                npx cypress run \
+                    --spec 'cypress/e2e/smoke/**' \
+                    --reporter mochawesome \
+                    --reporter-options reportDir=benchmark-output,overwrite=false,html=false,json=true \
+                    || true
+            "
+
+        # Record end time
+        END_TIME=\$(date +%s%N)
+        TOTAL_TIME_MS=\$(( (END_TIME - START_TIME) / 1000000 ))
+
+        echo "Container total time: \${TOTAL_TIME_MS}ms"
+
+        # Extract metrics from mochawesome JSON
+        node -e "
+            const fs = require('fs');
+            const glob = require('child_process').execSync('ls ${versionDir}/*.json 2>/dev/null || true').toString().trim();
+            if (!glob) {
+                console.log('No JSON files found for ${cypressVersion}');
+                const entry = {
+                    version: '${cypressVersion}',
+                    duration: 0,
+                    totalTime: \${TOTAL_TIME_MS},
+                    tests: 0,
+                    passes: 0,
+                    failures: 0,
+                    pending: 0,
+                    error: 'No results collected'
+                };
+                const metrics = JSON.parse(fs.readFileSync('benchmark-results/metrics.json', 'utf8'));
+                metrics.push(entry);
+                fs.writeFileSync('benchmark-results/metrics.json', JSON.stringify(metrics, null, 2));
+                process.exit(0);
+            }
+
+            // Read all JSON files and sum stats
+            const files = glob.split('\\n').filter(f => f.endsWith('.json'));
+            let totalDuration = 0, totalTests = 0, totalPasses = 0, totalFailures = 0, totalPending = 0;
+
+            files.forEach(file => {
+                try {
+                    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+                    const s = data.stats || {};
+                    totalDuration += (s.duration || 0);
+                    totalTests += (s.tests || 0);
+                    totalPasses += (s.passes || 0);
+                    totalFailures += (s.failures || 0);
+                    totalPending += (s.pending || 0);
+                } catch(e) {}
+            });
+
+            const entry = {
+                version: '${cypressVersion}',
+                duration: totalDuration,
+                totalTime: \${TOTAL_TIME_MS},
+                tests: totalTests,
+                passes: totalPasses,
+                failures: totalFailures,
+                pending: totalPending
+            };
+
+            console.log('Cypress ${cypressVersion}: ' + (totalDuration/1000).toFixed(1) + 's test time, ' + totalTests + ' tests');
+
+            const metrics = JSON.parse(fs.readFileSync('benchmark-results/metrics.json', 'utf8'));
+            metrics.push(entry);
+            fs.writeFileSync('benchmark-results/metrics.json', JSON.stringify(metrics, null, 2));
+        "
+    """
+}
