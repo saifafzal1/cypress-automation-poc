@@ -269,11 +269,19 @@ pipeline {
                     echo "Report generated at mochawesome-report/report.html"
                 '''
             }
+            post {
+                always {
+                    stash name: 'mochawesome-html', includes: 'mochawesome-report/**', allowEmpty: true
+                    stash name: 'cypress-screenshots', includes: 'cypress/screenshots/**', allowEmpty: true
+                    stash name: 'cypress-videos', includes: 'cypress/videos/**', allowEmpty: true
+                }
+            }
         }
 
         // ── Stage 6: Publish Report ──
         stage('Publish Report') {
             steps {
+                unstash 'mochawesome-html'
                 publishHTML(target: [
                     allowMissing: true,
                     alwaysLinkToLastBuild: true,
@@ -290,7 +298,10 @@ pipeline {
 
     post {
         always {
-            // ── Archive artifacts ──
+            // ── Unstash from Docker agent workspace and archive ──
+            unstash 'mochawesome-html'
+            unstash 'cypress-screenshots'
+            unstash 'cypress-videos'
             archiveArtifacts artifacts: 'mochawesome-report/**', allowEmptyArchive: true
             archiveArtifacts artifacts: 'cypress/screenshots/**', allowEmptyArchive: true
             archiveArtifacts artifacts: 'cypress/videos/**', allowEmptyArchive: true
