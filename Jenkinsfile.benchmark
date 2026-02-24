@@ -111,12 +111,14 @@ pipeline {
                     echo "==============================="
 
                     echo "Generating benchmark comparison report..."
-                    CONTAINER_ID=$(docker create --entrypoint="" node:20-alpine sh -c "mkdir -p /app/benchmark-report && node /app/scripts/generate-benchmark-report.js")
+                    # Start a long-running container so we can exec into it
+                    CONTAINER_ID=$(docker run -d --entrypoint="" node:20-alpine sleep 300)
+                    docker exec ${CONTAINER_ID} mkdir -p /app/benchmark-report
                     docker cp ${WORKSPACE}/scripts ${CONTAINER_ID}:/app/scripts
                     docker cp ${WORKSPACE}/benchmark-results ${CONTAINER_ID}:/app/benchmark-results
-                    docker start -a ${CONTAINER_ID}
+                    docker exec ${CONTAINER_ID} node /app/scripts/generate-benchmark-report.js
                     docker cp ${CONTAINER_ID}:/app/benchmark-report/index.html ${WORKSPACE}/benchmark-report/index.html
-                    docker rm ${CONTAINER_ID}
+                    docker rm -f ${CONTAINER_ID}
                 '''
             }
         }
@@ -171,7 +173,7 @@ def runBenchmark(String cypressVersion) {
             -w /app \
             --entrypoint="" \
             cypress/included:${cypressVersion} \
-            npx cypress run --spec 'cypress/e2e/smoke/**'
+            npx cypress run --spec 'cypress/e2e/smoke/**' --reporter spec
 
         # Copy test files into container
         docker cp \${WORKSPACE}/cypress ${containerName}:/app/cypress
@@ -194,31 +196,37 @@ def runBenchmark(String cypressVersion) {
         echo "totalTime=\${TOTAL_TIME_MS}" >> \${METRIC_FILE}
 
         LOG=\${WORKSPACE}/${logFile}
+        PASSES=0
+        FAILURES=0
+        TESTS=0
+        DURATION_MS=0
+
         if [ -f "\${LOG}" ]; then
             LOG_SIZE=\$(wc -c < "\${LOG}")
             echo "Log captured: \${LOG_SIZE} bytes"
 
-            # Strip ANSI codes
+            # Strip ANSI codes for parsing
             CLEAN=\${WORKSPACE}/benchmark-results/cypress-${cypressVersion}.clean.log
-            sed 's/\\x1b\\[[0-9;]*m//g; s/\\x1b\\[K//g' "\${LOG}" > "\${CLEAN}"
+            sed 's/\\x1b\\[[0-9;]*m//g; s/\\x1b\\[K//g' "\${LOG}" > "\${CLEAN}" || true
 
-            # Count individual passing tests (✓ character)
-            PASSES=\$(grep -c '✓' "\${LOG}" 2>/dev/null || echo "0")
+            # Parse "N passing" from Cypress spec reporter output
+            PASS_LINE=\$(grep -oE '[0-9]+ passing' "\${CLEAN}" | tail -1) || true
+            if [ -n "\${PASS_LINE}" ]; then
+                PASSES=\$(echo "\${PASS_LINE}" | grep -oE '[0-9]+' | head -1) || true
+            fi
 
-            # Count failing tests
-            FAIL_LINE=\$(grep -oE '[0-9]+ failing' "\${CLEAN}" 2>/dev/null | head -1 || true)
-            FAILURES=0
+            # Parse "N failing"
+            FAIL_LINE=\$(grep -oE '[0-9]+ failing' "\${CLEAN}" | tail -1) || true
             if [ -n "\${FAIL_LINE}" ]; then
-                FAILURES=\$(echo "\${FAIL_LINE}" | grep -oE '[0-9]+')
+                FAILURES=\$(echo "\${FAIL_LINE}" | grep -oE '[0-9]+' | head -1) || true
             fi
 
             TESTS=\$(( PASSES + FAILURES ))
 
-            # Extract duration from summary line
-            SUMMARY=\$(grep -E '(All specs passed|specs? failed)' "\${CLEAN}" | tail -1 || true)
-            DURATION_MS=0
+            # Extract duration from summary "All specs passed!  MM:SS" or per-spec durations
+            SUMMARY=\$(grep 'All specs passed\\|specs.*failed' "\${CLEAN}" | tail -1) || true
             if [ -n "\${SUMMARY}" ]; then
-                DUR_STR=\$(echo "\${SUMMARY}" | grep -oE '[0-9]+:[0-9]+' | tail -1 || true)
+                DUR_STR=\$(echo "\${SUMMARY}" | grep -oE '[0-9]+:[0-9]+' | tail -1) || true
                 if [ -n "\${DUR_STR}" ]; then
                     MINS=\$(echo "\${DUR_STR}" | cut -d: -f1)
                     SECS=\$(echo "\${DUR_STR}" | cut -d: -f2)
@@ -227,17 +235,14 @@ def runBenchmark(String cypressVersion) {
             fi
 
             echo "Parsed: tests=\${TESTS} passes=\${PASSES} failures=\${FAILURES} duration=\${DURATION_MS}ms"
-            echo "tests=\${TESTS}" >> \${METRIC_FILE}
-            echo "passes=\${PASSES}" >> \${METRIC_FILE}
-            echo "failures=\${FAILURES}" >> \${METRIC_FILE}
-            echo "duration=\${DURATION_MS}" >> \${METRIC_FILE}
         else
             echo "WARNING: No log file"
-            echo "tests=0" >> \${METRIC_FILE}
-            echo "passes=0" >> \${METRIC_FILE}
-            echo "failures=0" >> \${METRIC_FILE}
-            echo "duration=0" >> \${METRIC_FILE}
         fi
+
+        echo "tests=\${TESTS}" >> \${METRIC_FILE}
+        echo "passes=\${PASSES}" >> \${METRIC_FILE}
+        echo "failures=\${FAILURES}" >> \${METRIC_FILE}
+        echo "duration=\${DURATION_MS}" >> \${METRIC_FILE}
 
         echo "--- Metric ---"
         cat \${METRIC_FILE}
