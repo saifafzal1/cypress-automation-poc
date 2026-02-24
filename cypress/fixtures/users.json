@@ -1,38 +1,22 @@
 {
   "validUser": {
-    "username": "admin",
-    "password": "Admin@123"
+    "username": "John Doe",
+    "password": "ThisIsNotAPassword"
   },
   "invalidUser": {
-    "username": "wronguser",
-    "password": "WrongPass@123"
+    "username": "invalid_user",
+    "password": "WrongPassword"
   },
-  "lockedUser": {
-    "username": "locked_user",
-    "password": "Locked@123"
+  "emptyCredentials": {
+    "username": "",
+    "password": ""
   },
-  "newUser": {
-    "firstName": "John",
-    "lastName": "Doe",
-    "email": "john.doe@example.com",
-    "password": "SecurePass@123",
-    "confirmPassword": "SecurePass@123"
+  "invalidPasswordOnly": {
+    "username": "John Doe",
+    "password": "InvalidPass123"
   },
-  "duplicateUser": {
-    "firstName": "Admin",
-    "lastName": "User",
-    "email": "admin@example.com",
-    "password": "Admin@123",
-    "confirmPassword": "Admin@123"
-  },
-  "createUser": {
-    "name": "Jane Smith",
-    "email": "jane.smith@example.com",
-    "role": "Editor"
-  },
-  "editUser": {
-    "name": "Jane Smith Updated",
-    "email": "jane.updated@example.com",
-    "role": "Admin"
+  "invalidUsernameOnly": {
+    "username": "WrongUser",
+    "password": "ThisIsNotAPassword"
   }
 }

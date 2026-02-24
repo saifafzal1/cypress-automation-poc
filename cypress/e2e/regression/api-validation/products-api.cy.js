@@ -1,81 +1,37 @@
-describe('Regression: Products API', () => {
-  let authToken
-  let createdProductId
-
-  before(() => {
-    cy.request('POST', '/api/auth/login', {
-      username: 'admin',
-      password: 'Admin@123'
-    }).then((response) => {
-      authToken = response.body.token
+describe('Regression — Page Content Validation', () => {
+  it('should have proper page title on homepage', () => {
+    cy.request('/').then((response) => {
+      expect(response.body).to.contain('CURA Healthcare Service')
     })
   })
 
-  it('GET /api/products — should return list of products', () => {
-    cy.request({
-      method: 'GET',
-      url: '/api/products',
-      headers: { Authorization: `Bearer ${authToken}` }
-    }).then((response) => {
-      expect(response.status).to.eq(200)
-      expect(response.body).to.be.an('array')
+  it('should have Make Appointment button on homepage', () => {
+    cy.request('/').then((response) => {
+      expect(response.body).to.contain('btn-make-appointment')
     })
   })
 
-  it('POST /api/products — should create a new product', () => {
-    cy.fixture('api-responses').then((api) => {
-      cy.request({
-        method: 'POST',
-        url: api.products.endpoint,
-        headers: { Authorization: `Bearer ${authToken}` },
-        body: api.products.createPayload
-      }).then((response) => {
-        expect(response.status).to.eq(201)
-        expect(response.body).to.have.property('id')
-        expect(response.body.name).to.eq(api.products.createPayload.name)
-        expect(response.body.price).to.eq(api.products.createPayload.price)
-        createdProductId = response.body.id
-      })
+  it('should have correct facility options in the appointment form', () => {
+    cy.request('/').then((response) => {
+      expect(response.body).to.contain('Tokyo CURA Healthcare Center')
+      expect(response.body).to.contain('Hongkong CURA Healthcare Center')
+      expect(response.body).to.contain('Seoul CURA Healthcare Center')
     })
   })
 
-  it('PUT /api/products/:id — should update an existing product', () => {
-    cy.fixture('api-responses').then((api) => {
-      cy.request({
-        method: 'PUT',
-        url: `${api.products.endpoint}/${createdProductId}`,
-        headers: { Authorization: `Bearer ${authToken}` },
-        body: api.products.updatePayload
-      }).then((response) => {
-        expect(response.status).to.eq(200)
-        expect(response.body.name).to.eq(api.products.updatePayload.name)
-        expect(response.body.price).to.eq(api.products.updatePayload.price)
-      })
+  it('should have healthcare program radio buttons', () => {
+    cy.request('/').then((response) => {
+      expect(response.body).to.contain('radio_program_medicare')
+      expect(response.body).to.contain('radio_program_medicaid')
+      expect(response.body).to.contain('radio_program_none')
     })
   })
 
-  it('DELETE /api/products/:id — should delete a product', () => {
-    cy.fixture('api-responses').then((api) => {
-      cy.request({
-        method: 'DELETE',
-        url: `${api.products.endpoint}/${createdProductId}`,
-        headers: { Authorization: `Bearer ${authToken}` }
-      }).then((response) => {
-        expect(response.status).to.eq(200)
-      })
-    })
-  })
-
-  it('GET /api/products/:id — should return 404 for deleted product', () => {
-    cy.fixture('api-responses').then((api) => {
-      cy.request({
-        method: 'GET',
-        url: `${api.products.endpoint}/${createdProductId}`,
-        headers: { Authorization: `Bearer ${authToken}` },
-        failOnStatusCode: false
-      }).then((response) => {
-        expect(response.status).to.eq(404)
-      })
+  it('should serve pages with reasonable response time', () => {
+    const startTime = Date.now()
+    cy.request('/').then(() => {
+      const loadTime = Date.now() - startTime
+      expect(loadTime).to.be.lessThan(5000)
     })
   })
 })

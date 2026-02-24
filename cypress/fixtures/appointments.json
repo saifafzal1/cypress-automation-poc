@@ -1,0 +1,29 @@
+{
+  "validAppointment": {
+    "facility": "Tokyo CURA Healthcare Center",
+    "readmission": true,
+    "program": "Medicare",
+    "visitDate": "25/12/2025",
+    "comment": "Regular checkup appointment"
+  },
+  "anotherAppointment": {
+    "facility": "Hongkong CURA Healthcare Center",
+    "readmission": false,
+    "program": "Medicaid",
+    "visitDate": "15/01/2026",
+    "comment": "Follow-up visit"
+  },
+  "minimalAppointment": {
+    "facility": "Seoul CURA Healthcare Center",
+    "readmission": false,
+    "program": "None",
+    "visitDate": "01/03/2026",
+    "comment": ""
+  },
+  "facilities": [
+    "Tokyo CURA Healthcare Center",
+    "Hongkong CURA Healthcare Center",
+    "Seoul CURA Healthcare Center"
+  ],
+  "programs": ["Medicare", "Medicaid", "None"]
+}

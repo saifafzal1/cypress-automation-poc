@@ -1,30 +1,20 @@
-import HomePage from '../../pages/HomePage'
+import homePage from '../../pages/HomePage'
 
-describe('Smoke: Navigation', () => {
+describe('Smoke — Navigation', () => {
   beforeEach(() => {
-    cy.fixture('users').then((users) => {
-      cy.login(users.validUser.username, users.validUser.password)
-    })
-    HomePage.visitHomePage()
+    homePage.visitHomePage()
   })
 
-  it('should navigate to Dashboard page', () => {
-    HomePage.clickNavItem('Dashboard')
-    HomePage.verifyUrl('/dashboard')
+  it('should have a sidebar toggle button', () => {
+    homePage.verifySidebarToggleExists()
   })
 
-  it('should navigate to Users page', () => {
-    HomePage.clickNavItem('Users')
-    HomePage.verifyUrl('/users')
+  it('should open the sidebar menu', () => {
+    homePage.verifySidebarLinks()
   })
 
-  it('should navigate to Profile page', () => {
-    HomePage.clickNavItem('Profile')
-    HomePage.verifyUrl('/profile')
-  })
-
-  it('should navigate to Contact page', () => {
-    HomePage.clickNavItem('Contact')
-    HomePage.verifyUrl('/contact')
+  it('should navigate to Home from sidebar', () => {
+    homePage.clickSidebarLink('Home')
+    cy.url().should('include', '/')
   })
 })

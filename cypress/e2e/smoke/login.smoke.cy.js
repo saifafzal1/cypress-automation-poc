@@ -1,22 +1,27 @@
-import LoginPage from '../../pages/LoginPage'
-import DashboardPage from '../../pages/DashboardPage'
+import loginPage from '../../pages/LoginPage'
 
-describe('Smoke: Login', () => {
+describe('Smoke — Login', () => {
   beforeEach(() => {
-    LoginPage.visitLoginPage()
+    loginPage.visitLoginPage()
   })
 
-  it('should login with valid credentials and land on dashboard', () => {
+  it('should display the login form', () => {
+    loginPage.verifyLoginPageVisible()
+    loginPage.verifyUsernameFieldExists()
+    loginPage.verifyPasswordFieldExists()
+  })
+
+  it('should login with valid credentials', () => {
     cy.fixture('users').then((users) => {
-      LoginPage.login(users.validUser.username, users.validUser.password)
-      DashboardPage.verifyDashboardLoaded()
-      DashboardPage.verifyUrl('/dashboard')
+      loginPage.login(users.validUser.username, users.validUser.password)
+      cy.url().should('include', 'appointment')
     })
   })
 
-  it('should display login page elements correctly', () => {
-    LoginPage.verifyElementVisible(LoginPage.usernameInput)
-    LoginPage.verifyElementVisible(LoginPage.passwordInput)
-    LoginPage.verifyElementVisible(LoginPage.loginButton)
+  it('should show error with invalid credentials', () => {
+    cy.fixture('users').then((users) => {
+      loginPage.login(users.invalidUser.username, users.invalidUser.password)
+      loginPage.verifyErrorVisible()
+    })
   })
 })

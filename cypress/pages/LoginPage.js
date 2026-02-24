@@ -2,16 +2,15 @@ import BasePage from './BasePage'
 
 class LoginPage extends BasePage {
   // Selectors
-  usernameInput = '[data-testid="username"]'
-  passwordInput = '[data-testid="password"]'
-  loginButton = '[data-testid="login-button"]'
-  errorMessage = '[data-testid="error-message"]'
-  rememberMeCheckbox = '[data-testid="remember-me"]'
-  forgotPasswordLink = '[data-testid="forgot-password-link"]'
-  signupLink = '[data-testid="signup-link"]'
+  usernameInput = '#txt-username'
+  passwordInput = '#txt-password'
+  loginButton = '#btn-login'
+  loginSection = 'section#login'
+  loginHeader = 'h2'
+  errorMessage = '.text-danger'
 
   visitLoginPage() {
-    this.visit('/login')
+    this.visit('/profile.php#login')
   }
 
   enterUsername(username) {
@@ -26,34 +25,31 @@ class LoginPage extends BasePage {
     this.clickElement(this.loginButton)
   }
 
-  checkRememberMe() {
-    cy.get(this.rememberMeCheckbox).check()
-  }
-
-  clickForgotPassword() {
-    this.clickElement(this.forgotPasswordLink)
-  }
-
-  clickSignupLink() {
-    this.clickElement(this.signupLink)
-  }
-
   login(username, password) {
     this.enterUsername(username)
     this.enterPassword(password)
     this.clickLogin()
   }
 
+  verifyLoginPageVisible() {
+    this.verifyElementVisible(this.loginButton)
+    this.verifyText(this.loginHeader, 'Login')
+  }
+
   verifyErrorMessage(message) {
     this.verifyText(this.errorMessage, message)
   }
 
-  verifyLoginPageVisible() {
-    this.verifyElementVisible(this.loginButton)
+  verifyErrorVisible() {
+    this.verifyElementVisible(this.errorMessage)
   }
 
-  verifyFieldValidationError(field) {
-    cy.get(`[data-testid="${field}-error"]`).should('be.visible')
+  verifyUsernameFieldExists() {
+    this.verifyElementVisible(this.usernameInput)
+  }
+
+  verifyPasswordFieldExists() {
+    this.verifyElementVisible(this.passwordInput)
   }
 }
 

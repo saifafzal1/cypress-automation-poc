@@ -1,93 +1,50 @@
-describe('Regression: Users API', () => {
-  let authToken
-  let createdUserId
-
-  before(() => {
-    cy.request('POST', '/api/auth/login', {
-      username: 'admin',
-      password: 'Admin@123'
-    }).then((response) => {
-      authToken = response.body.token
-    })
-  })
-
-  it('GET /api/users — should return list of users', () => {
-    cy.request({
-      method: 'GET',
-      url: '/api/users',
-      headers: { Authorization: `Bearer ${authToken}` }
-    }).then((response) => {
+describe('Regression — Page HTTP Responses', () => {
+  it('GET / — homepage should return 200', () => {
+    cy.request('/').then((response) => {
       expect(response.status).to.eq(200)
-      expect(response.body).to.be.an('array')
-      expect(response.body.length).to.be.greaterThan(0)
     })
   })
 
-  it('POST /api/users — should create a new user', () => {
-    cy.fixture('api-responses').then((api) => {
-      cy.request({
-        method: 'POST',
-        url: api.users.endpoint,
-        headers: { Authorization: `Bearer ${authToken}` },
-        body: api.users.createPayload
-      }).then((response) => {
-        expect(response.status).to.eq(201)
-        expect(response.body).to.have.property('id')
-        expect(response.body.name).to.eq(api.users.createPayload.name)
-        createdUserId = response.body.id
-      })
+  it('GET /profile.php — login page should return 200', () => {
+    cy.request('/profile.php').then((response) => {
+      expect(response.status).to.eq(200)
     })
   })
 
-  it('PUT /api/users/:id — should update an existing user', () => {
-    cy.fixture('api-responses').then((api) => {
-      cy.request({
-        method: 'PUT',
-        url: `${api.users.endpoint}/${createdUserId}`,
-        headers: { Authorization: `Bearer ${authToken}` },
-        body: api.users.updatePayload
-      }).then((response) => {
-        expect(response.status).to.eq(200)
-        expect(response.body.name).to.eq(api.users.updatePayload.name)
-      })
+  it('GET /history.php — history page should be accessible', () => {
+    cy.request({
+      url: '/history.php',
+      failOnStatusCode: false
+    }).then((response) => {
+      expect(response.status).to.be.oneOf([200, 302])
     })
   })
 
-  it('GET /api/users/:id — should return a single user', () => {
-    cy.fixture('api-responses').then((api) => {
-      cy.request({
-        method: 'GET',
-        url: `${api.users.endpoint}/${createdUserId}`,
-        headers: { Authorization: `Bearer ${authToken}` }
-      }).then((response) => {
-        expect(response.status).to.eq(200)
-        expect(response.body).to.have.property('id', createdUserId)
-      })
+  it('should contain expected content on homepage', () => {
+    cy.request('/').then((response) => {
+      expect(response.body).to.contain('CURA Healthcare')
     })
   })
 
-  it('DELETE /api/users/:id — should delete a user', () => {
-    cy.fixture('api-responses').then((api) => {
-      cy.request({
-        method: 'DELETE',
-        url: `${api.users.endpoint}/${createdUserId}`,
-        headers: { Authorization: `Bearer ${authToken}` }
-      }).then((response) => {
-        expect(response.status).to.eq(200)
-      })
+  it('should contain login form on profile page', () => {
+    cy.request('/profile.php').then((response) => {
+      expect(response.body).to.contain('txt-username')
+      expect(response.body).to.contain('txt-password')
     })
   })
 
-  it('GET /api/users/:id — should return 404 for deleted user', () => {
-    cy.fixture('api-responses').then((api) => {
-      cy.request({
-        method: 'GET',
-        url: `${api.users.endpoint}/${createdUserId}`,
-        headers: { Authorization: `Bearer ${authToken}` },
-        failOnStatusCode: false
-      }).then((response) => {
-        expect(response.status).to.eq(404)
-      })
+  it('POST /authenticate.php — should authenticate with valid credentials', () => {
+    cy.request({
+      method: 'POST',
+      url: '/authenticate.php',
+      form: true,
+      body: {
+        username: 'John Doe',
+        password: 'ThisIsNotAPassword'
+      },
+      followRedirect: false
+    }).then((response) => {
+      expect(response.status).to.be.oneOf([200, 302])
     })
   })
 })

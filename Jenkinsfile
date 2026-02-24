@@ -13,9 +13,7 @@ pipeline {
     }
 
     environment {
-        CYPRESS_BASE_URL = credentials('CYPRESS_BASE_URL')
-        CYPRESS_USERNAME = credentials('CYPRESS_USERNAME')
-        CYPRESS_PASSWORD = credentials('CYPRESS_PASSWORD')
+        CYPRESS_BASE_URL = 'https://katalon-demo-cura.herokuapp.com'
     }
 
     options {
@@ -136,7 +134,7 @@ pipeline {
                             }
                         }
 
-                        stage('Dashboard Tests') {
+                        stage('Appointment Tests') {
                             agent {
                                 docker {
                                     image 'cypress/included:15.3.0'
@@ -148,19 +146,19 @@ pipeline {
                                 sh """
                                     npx cypress run \
                                         --browser ${params.BROWSER} \
-                                        --spec 'cypress/e2e/regression/dashboard/**' \
+                                        --spec 'cypress/e2e/regression/appointment/**' \
                                         --reporter mochawesome \
-                                        --reporter-options reportDir=mochawesome-temp/dashboard,overwrite=false,html=false,json=true
+                                        --reporter-options reportDir=mochawesome-temp/appointment,overwrite=false,html=false,json=true
                                 """
                             }
                             post {
                                 always {
-                                    stash name: 'dashboard-results', includes: 'mochawesome-temp/dashboard/**,cypress/screenshots/**,cypress/videos/**', allowEmpty: true
+                                    stash name: 'appointment-results', includes: 'mochawesome-temp/appointment/**,cypress/screenshots/**,cypress/videos/**', allowEmpty: true
                                 }
                             }
                         }
 
-                        stage('User Management Tests') {
+                        stage('Confirmation Tests') {
                             agent {
                                 docker {
                                     image 'cypress/included:15.3.0'
@@ -172,19 +170,19 @@ pipeline {
                                 sh """
                                     npx cypress run \
                                         --browser ${params.BROWSER} \
-                                        --spec 'cypress/e2e/regression/user-management/**' \
+                                        --spec 'cypress/e2e/regression/confirmation/**' \
                                         --reporter mochawesome \
-                                        --reporter-options reportDir=mochawesome-temp/users,overwrite=false,html=false,json=true
+                                        --reporter-options reportDir=mochawesome-temp/confirmation,overwrite=false,html=false,json=true
                                 """
                             }
                             post {
                                 always {
-                                    stash name: 'users-results', includes: 'mochawesome-temp/users/**,cypress/screenshots/**,cypress/videos/**', allowEmpty: true
+                                    stash name: 'confirmation-results', includes: 'mochawesome-temp/confirmation/**,cypress/screenshots/**,cypress/videos/**', allowEmpty: true
                                 }
                             }
                         }
 
-                        stage('Forms Tests') {
+                        stage('History Tests') {
                             agent {
                                 docker {
                                     image 'cypress/included:15.3.0'
@@ -196,14 +194,14 @@ pipeline {
                                 sh """
                                     npx cypress run \
                                         --browser ${params.BROWSER} \
-                                        --spec 'cypress/e2e/regression/forms/**' \
+                                        --spec 'cypress/e2e/regression/history/**' \
                                         --reporter mochawesome \
-                                        --reporter-options reportDir=mochawesome-temp/forms,overwrite=false,html=false,json=true
+                                        --reporter-options reportDir=mochawesome-temp/history,overwrite=false,html=false,json=true
                                 """
                             }
                             post {
                                 always {
-                                    stash name: 'forms-results', includes: 'mochawesome-temp/forms/**,cypress/screenshots/**,cypress/videos/**', allowEmpty: true
+                                    stash name: 'history-results', includes: 'mochawesome-temp/history/**,cypress/screenshots/**,cypress/videos/**', allowEmpty: true
                                 }
                             }
                         }
@@ -245,9 +243,9 @@ pipeline {
             }
             steps {
                 unstash 'auth-results'
-                unstash 'dashboard-results'
-                unstash 'users-results'
-                unstash 'forms-results'
+                unstash 'appointment-results'
+                unstash 'confirmation-results'
+                unstash 'history-results'
                 unstash 'api-results'
             }
         }
@@ -290,19 +288,9 @@ pipeline {
         }
         success {
             echo '✅ All Cypress tests passed!'
-            // Uncomment when Slack is configured:
-            // slackSend(
-            //     color: 'good',
-            //     message: "✅ Cypress ${params.SUITE} tests PASSED on ${env.BRANCH_NAME}\nBrowser: ${params.BROWSER} | Parallel: ${params.PARALLEL}\n${env.BUILD_URL}"
-            // )
         }
         failure {
             echo '❌ Some Cypress tests failed!'
-            // Uncomment when Slack is configured:
-            // slackSend(
-            //     color: 'danger',
-            //     message: "❌ Cypress ${params.SUITE} tests FAILED on ${env.BRANCH_NAME}\nBrowser: ${params.BROWSER} | Parallel: ${params.PARALLEL}\n${env.BUILD_URL}"
-            // )
         }
         cleanup {
             cleanWs()

@@ -1,6 +1,8 @@
 # Cypress Automation POC
 
 > **Cypress 15 + Page Object Model + Docker + Jenkins (Parallel) + GitHub Actions**
+>
+> Testing against [CURA Healthcare Service](https://katalon-demo-cura.herokuapp.com/)
 
 [![Cypress Smoke Tests](https://github.com/saifafzal1/cypress-automation-poc/actions/workflows/cypress-smoke.yml/badge.svg)](https://github.com/saifafzal1/cypress-automation-poc/actions/workflows/cypress-smoke.yml)
 
@@ -29,6 +31,18 @@ Developer → Git Push → GitHub
 
 ---
 
+## Application Under Test
+
+| Detail | Value |
+|---|---|
+| **App** | CURA Healthcare Service |
+| **URL** | https://katalon-demo-cura.herokuapp.com/ |
+| **Demo Username** | `John Doe` |
+| **Demo Password** | `ThisIsNotAPassword` |
+| **Pages** | Homepage, Login, Make Appointment, Confirmation, History |
+
+---
+
 ## Tech Stack
 
 | Tool | Version | Purpose |
@@ -52,15 +66,15 @@ Developer → Git Push → GitHub
 │   └── deploy-report.yml          # GitHub Pages report deployment
 ├── cypress/
 │   ├── e2e/
-│   │   ├── smoke/                 # 3 specs — critical path (~2 min)
+│   │   ├── smoke/                 # 3 specs — login, homepage, navigation
 │   │   ├── regression/
-│   │   │   ├── authentication/    # 4 specs — login, logout, forgot-pwd, signup
-│   │   │   ├── dashboard/         # 3 specs — widgets, filters, charts
-│   │   │   ├── user-management/   # 4 specs — CRUD + roles
-│   │   │   ├── forms/             # 3 specs — contact, profile, search
-│   │   │   └── api-validation/    # 2 specs — users & products API
-│   │   └── sanity/                # 2 specs — health check
-│   ├── pages/                     # Page Object classes (8 files)
+│   │   │   ├── authentication/    # 4 specs — login, logout, validation, session
+│   │   │   ├── appointment/       # 4 specs — booking, facility, date, form validation
+│   │   │   ├── confirmation/      # 3 specs — confirmation, details, booking flow
+│   │   │   ├── history/           # 3 specs — history, navigation, records
+│   │   │   └── api-validation/    # 2 specs — HTTP responses & content validation
+│   │   └── sanity/                # 2 specs — health check, critical path
+│   ├── pages/                     # Page Object classes (6 files)
 │   ├── fixtures/                  # Test data (4 JSON files)
 │   └── support/                   # Custom commands + setup
 ├── scripts/
@@ -69,7 +83,7 @@ Developer → Git Push → GitHub
 │   └── email-notification.html    # Email template
 ├── cypress.config.js
 ├── Dockerfile                     # cypress/included:15.3.0
-├── docker-compose.yml             # App + Cypress + 5 parallel runners
+├── docker-compose.yml             # Cypress + 5 parallel runners
 ├── Jenkinsfile                    # Parallel regression pipeline
 ├── Jenkinsfile.docker             # Docker-based pipeline
 ├── jenkins-setup-guide.md         # Step-by-step Jenkins setup
@@ -130,35 +144,33 @@ docker compose --profile parallel up --abort-on-container-exit
 
 | Suite | Specs | Tests | Run Time | Command |
 |---|---|---|---|---|
-| **Smoke** | 3 | ~8 | ~2 min | `npm run cy:smoke` |
+| **Smoke** | 3 | ~9 | ~2 min | `npm run cy:smoke` |
 | **Sanity** | 2 | ~5 | ~1 min | `npm run cy:sanity` |
-| **Regression — Auth** | 4 | ~22 | ~5 min | `npm run cy:regression:auth` |
-| **Regression — Dashboard** | 3 | ~15 | ~4 min | `npm run cy:regression:dashboard` |
-| **Regression — User Mgmt** | 4 | ~15 | ~6 min | `npm run cy:regression:users` |
-| **Regression — Forms** | 3 | ~14 | ~3 min | `npm run cy:regression:forms` |
+| **Regression — Auth** | 4 | ~19 | ~4 min | `npm run cy:regression:auth` |
+| **Regression — Appointment** | 4 | ~18 | ~5 min | `npm run cy:regression:appointment` |
+| **Regression — Confirmation** | 3 | ~11 | ~4 min | `npm run cy:regression:confirmation` |
+| **Regression — History** | 3 | ~10 | ~3 min | `npm run cy:regression:history` |
 | **Regression — API** | 2 | ~11 | ~2 min | `npm run cy:regression:api` |
-| **Full Regression** | 16 | ~77 | ~20 min | `npm run cy:regression` |
-| **All** | 21 | ~90 | ~23 min | `npm run cy:all` |
+| **Full Regression** | 16 | ~69 | ~18 min | `npm run cy:regression` |
+| **All** | 21 | ~83 | ~21 min | `npm run cy:all` |
 
 ---
 
 ## Page Object Model
 
 ```
-BasePage (shared methods)
-  ├── LoginPage
-  ├── HomePage
-  ├── DashboardPage
-  ├── UserManagementPage
-  ├── ProfilePage
-  ├── ContactPage
-  └── SignupPage
+BasePage (shared methods: visit, getElement, clickElement, typeText, verifyUrl, ...)
+  ├── LoginPage         — login form, credentials, error handling
+  ├── HomePage          — hero section, Make Appointment button, sidebar nav
+  ├── AppointmentPage   — facility, program, date, readmission, comment, booking
+  ├── ConfirmationPage  — appointment details verification
+  └── HistoryPage       — appointment history records
 ```
 
 Each page object encapsulates:
-- **Selectors** — `data-testid` based element locators
-- **Actions** — methods like `login()`, `createUser()`, `applyFilter()`
-- **Assertions** — methods like `verifyDashboardLoaded()`, `verifyErrorMessage()`
+- **Selectors** — `#id` based element locators matching the CURA app
+- **Actions** — methods like `login()`, `bookAppointment()`, `selectFacility()`
+- **Assertions** — methods like `verifyConfirmationPageLoaded()`, `verifyErrorVisible()`
 
 ---
 
@@ -189,19 +201,19 @@ Each page object encapsulates:
 Jenkins splits the 5 regression sub-suites across **parallel stages**, each running in its own Docker container:
 
 ```
-Checkout → Install → ┌─ Auth Tests (5 min) ────────┐ → Merge → Report
-                      ├─ Dashboard Tests (4 min) ───┤
-                      ├─ User Mgmt Tests (6 min) ───┤
-                      ├─ Forms Tests (3 min) ────────┤
-                      └─ API Tests (2 min) ──────────┘
+Checkout → Install → ┌─ Auth Tests (4 min) ──────────┐ → Merge → Report
+                      ├─ Appointment Tests (5 min) ───┤
+                      ├─ Confirmation Tests (4 min) ───┤
+                      ├─ History Tests (3 min) ────────┤
+                      └─ API Tests (2 min) ────────────┘
 ```
 
 ### Performance Comparison
 
 | Mode | Total Time | Containers |
 |---|---|---|
-| **Sequential** | ~20 min | 1 |
-| **Parallel** | ~7 min | 5 |
+| **Sequential** | ~18 min | 1 |
+| **Parallel** | ~6 min | 5 |
 | **Improvement** | **~65-70% faster** | — |
 
 ---
@@ -240,11 +252,11 @@ See [jenkins-setup-guide.md](jenkins-setup-guide.md) for complete instructions:
 | `cy:smoke` | Run smoke suite |
 | `cy:sanity` | Run sanity suite |
 | `cy:regression` | Run full regression |
-| `cy:regression:auth` | Run auth tests only |
-| `cy:regression:dashboard` | Run dashboard tests only |
-| `cy:regression:users` | Run user management tests only |
-| `cy:regression:forms` | Run forms tests only |
-| `cy:regression:api` | Run API tests only |
+| `cy:regression:auth` | Run authentication tests only |
+| `cy:regression:appointment` | Run appointment tests only |
+| `cy:regression:confirmation` | Run confirmation tests only |
+| `cy:regression:history` | Run history tests only |
+| `cy:regression:api` | Run API validation tests only |
 | `cy:all` | Run all tests |
 | `report` | Merge + generate Mochawesome HTML |
 | `report:full` | Full report generation with summary |

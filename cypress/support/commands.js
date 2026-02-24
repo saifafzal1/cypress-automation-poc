@@ -1,31 +1,36 @@
 // ── Login via UI ──
 Cypress.Commands.add('login', (username, password) => {
-  cy.visit('/login')
-  cy.get('[data-testid="username"]').clear().type(username)
-  cy.get('[data-testid="password"]').clear().type(password)
-  cy.get('[data-testid="login-button"]').click()
-  cy.url().should('not.include', '/login')
+  cy.visit('/profile.php#login')
+  cy.get('#txt-username').clear().type(username)
+  cy.get('#txt-password').clear().type(password)
+  cy.get('#btn-login').click()
+  cy.url().should('include', 'appointment')
 })
 
-// ── Login via API (skip UI for speed) ──
-Cypress.Commands.add('apiLogin', (username, password) => {
-  cy.request({
-    method: 'POST',
-    url: '/api/auth/login',
-    body: { username, password }
-  }).then((response) => {
-    expect(response.status).to.eq(200)
-    window.localStorage.setItem('authToken', response.body.token)
+// ── Login with fixture data ──
+Cypress.Commands.add('loginWithFixture', () => {
+  cy.fixture('users').then((users) => {
+    cy.login(users.validUser.username, users.validUser.password)
   })
 })
 
-// ── Reset application state ──
-Cypress.Commands.add('resetState', () => {
-  cy.request({
-    method: 'POST',
-    url: '/api/test/reset',
-    failOnStatusCode: false
-  })
+// ── Book an appointment via UI ──
+Cypress.Commands.add('bookAppointment', (appointmentData) => {
+  cy.get('#combo_facility').select(appointmentData.facility)
+  if (appointmentData.readmission) {
+    cy.get('#chk_hosp498').check()
+  }
+  const programMap = {
+    'Medicare': '#radio_program_medicare',
+    'Medicaid': '#radio_program_medicaid',
+    'None': '#radio_program_none'
+  }
+  cy.get(programMap[appointmentData.program]).check()
+  cy.get('#txt_visit_date').clear().type(appointmentData.visitDate)
+  if (appointmentData.comment) {
+    cy.get('#txt_comment').clear().type(appointmentData.comment)
+  }
+  cy.get('#btn-book-appointment').click()
 })
 
 // ── Intercept and wait for API response ──

@@ -2,14 +2,13 @@ import BasePage from './BasePage'
 
 class HomePage extends BasePage {
   // Selectors
-  navMenu = '[data-testid="nav-menu"]'
-  navItems = '[data-testid="nav-item"]'
-  heroSection = '[data-testid="hero-section"]'
-  heroTitle = '[data-testid="hero-title"]'
-  footerLinks = '[data-testid="footer"] a'
-  searchBar = '[data-testid="search-bar"]'
-  userAvatar = '[data-testid="user-avatar"]'
-  logoutButton = '[data-testid="logout-button"]'
+  makeAppointmentButton = '#btn-make-appointment'
+  heroSection = 'section#top'
+  heroTitle = '.text-vertical-center h1'
+  navbar = '.navbar'
+  sidebarToggle = '#menu-toggle'
+  sidebarMenu = '.sidebar-nav'
+  footerText = 'footer'
 
   visitHomePage() {
     this.visit('/')
@@ -23,37 +22,38 @@ class HomePage extends BasePage {
     this.verifyText(this.heroTitle, title)
   }
 
-  clickNavItem(itemName) {
-    cy.get(this.navMenu).contains(itemName).click()
+  clickMakeAppointment() {
+    this.clickElement(this.makeAppointmentButton)
   }
 
-  getNavItems() {
-    return cy.get(this.navItems)
+  verifySidebarToggleExists() {
+    this.verifyElementVisible(this.sidebarToggle)
   }
 
-  verifyNavItemCount(count) {
-    cy.get(this.navItems).should('have.length', count)
+  openSidebar() {
+    cy.get(this.sidebarToggle).click()
   }
 
-  verifyFooterLinks() {
-    cy.get(this.footerLinks).should('have.length.greaterThan', 0)
+  verifySidebarLinks() {
+    this.openSidebar()
+    cy.get(this.sidebarMenu).find('a').should('have.length.greaterThan', 0)
   }
 
-  searchFor(term) {
-    this.typeText(this.searchBar, term)
-    cy.get(this.searchBar).type('{enter}')
+  clickSidebarLink(linkText) {
+    this.openSidebar()
+    cy.get(this.sidebarMenu).find('a').contains(linkText).click()
   }
 
-  clickUserAvatar() {
-    this.clickElement(this.userAvatar)
-  }
-
-  clickLogout() {
-    this.clickElement(this.logoutButton)
+  verifyFooterExists() {
+    cy.get(this.footerText).should('exist')
   }
 
   verifyPageTitle(title) {
     cy.title().should('include', title)
+  }
+
+  verifyMakeAppointmentButtonVisible() {
+    this.verifyElementVisible(this.makeAppointmentButton)
   }
 }
 

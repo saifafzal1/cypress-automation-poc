@@ -1,47 +1,46 @@
-import LoginPage from '../../../pages/LoginPage'
-import DashboardPage from '../../../pages/DashboardPage'
+import loginPage from '../../../pages/LoginPage'
 
-describe('Regression: Login', () => {
+describe('Regression — Login', () => {
   beforeEach(() => {
-    LoginPage.visitLoginPage()
+    loginPage.visitLoginPage()
   })
 
   it('should login successfully with valid credentials', () => {
     cy.fixture('users').then((users) => {
-      LoginPage.login(users.validUser.username, users.validUser.password)
-      DashboardPage.verifyDashboardLoaded()
+      loginPage.login(users.validUser.username, users.validUser.password)
+      cy.url().should('include', 'appointment')
     })
   })
 
-  it('should show error for invalid credentials', () => {
+  it('should show error for invalid username', () => {
     cy.fixture('users').then((users) => {
-      LoginPage.login(users.invalidUser.username, users.invalidUser.password)
-      LoginPage.verifyErrorMessage('Invalid username or password')
+      loginPage.login(users.invalidUsernameOnly.username, users.invalidUsernameOnly.password)
+      loginPage.verifyErrorVisible()
     })
   })
 
-  it('should show error for locked account', () => {
+  it('should show error for invalid password', () => {
     cy.fixture('users').then((users) => {
-      LoginPage.login(users.lockedUser.username, users.lockedUser.password)
-      LoginPage.verifyErrorMessage('Account is locked')
+      loginPage.login(users.invalidPasswordOnly.username, users.invalidPasswordOnly.password)
+      loginPage.verifyErrorVisible()
     })
   })
 
-  it('should show validation errors for empty fields', () => {
-    LoginPage.clickLogin()
-    LoginPage.verifyFieldValidationError('username')
-    LoginPage.verifyFieldValidationError('password')
+  it('should show error for completely invalid credentials', () => {
+    cy.fixture('users').then((users) => {
+      loginPage.login(users.invalidUser.username, users.invalidUser.password)
+      loginPage.verifyErrorVisible()
+    })
   })
 
-  it('should show validation error for empty username only', () => {
-    LoginPage.enterPassword('SomePassword')
-    LoginPage.clickLogin()
-    LoginPage.verifyFieldValidationError('username')
+  it('should display all login form elements', () => {
+    loginPage.verifyUsernameFieldExists()
+    loginPage.verifyPasswordFieldExists()
+    loginPage.verifyElementVisible(loginPage.loginButton)
   })
 
-  it('should show validation error for empty password only', () => {
-    LoginPage.enterUsername('someuser')
-    LoginPage.clickLogin()
-    LoginPage.verifyFieldValidationError('password')
+  it('should keep user on login page with empty credentials', () => {
+    loginPage.clickLogin()
+    cy.url().should('include', 'profile.php')
   })
 })

@@ -1,4 +1,9 @@
 class BasePage {
+  // ── Navigation ──
+  sidebarToggle = '#menu-toggle'
+  sidebarMenu = '.sidebar-nav'
+  homeLink = 'a[href="./"]'
+
   visit(path) {
     cy.visit(path)
   }
@@ -35,8 +40,21 @@ class BasePage {
     cy.document().its('readyState').should('eq', 'complete')
   }
 
-  getByTestId(testId) {
-    return cy.get(`[data-testid="${testId}"]`)
+  getById(id) {
+    return cy.get(`#${id}`)
+  }
+
+  openSidebar() {
+    cy.get(this.sidebarToggle).click()
+  }
+
+  navigateHome() {
+    this.openSidebar()
+    cy.get(this.sidebarMenu).find('a').contains('Home').click()
+  }
+
+  verifyPageTitle(expectedTitle) {
+    cy.title().should('include', expectedTitle)
   }
 }
 

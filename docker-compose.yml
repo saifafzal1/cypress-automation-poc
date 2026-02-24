@@ -1,34 +1,15 @@
 version: '3.8'
 
 services:
-  # ── Application Under Test ──
-  # Replace this with your actual application image/build
-  app:
-    image: nginx:alpine  # Placeholder — swap with your app image
-    # build:
-    #   context: ../your-app
-    #   dockerfile: Dockerfile
-    ports:
-      - "3000:80"
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-
-  # ── Cypress Test Runner ──
+  # ── Cypress Test Runner (all tests) ──
+  # No local app needed — tests run against https://katalon-demo-cura.herokuapp.com
   cypress:
     build:
       context: .
       dockerfile: Dockerfile
-    depends_on:
-      app:
-        condition: service_healthy
     environment:
-      - CYPRESS_BASE_URL=http://app:80
+      - CYPRESS_BASE_URL=https://katalon-demo-cura.herokuapp.com
     volumes:
-      # Mount report/artifact directories to host for access after run
       - ./mochawesome-report:/app/mochawesome-report
       - ./mochawesome-temp:/app/mochawesome-temp
       - ./cypress/videos:/app/cypress/videos
@@ -39,11 +20,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    depends_on:
-      app:
-        condition: service_healthy
     environment:
-      - CYPRESS_BASE_URL=http://app:80
+      - CYPRESS_BASE_URL=https://katalon-demo-cura.herokuapp.com
     command: >
       sh -c "npx cypress run --spec 'cypress/e2e/regression/authentication/**'
       && npx mochawesome-merge mochawesome-temp/*.json -o mochawesome-report/auth-merged.json
@@ -56,66 +34,57 @@ services:
     profiles:
       - parallel
 
-  cypress-dashboard:
+  cypress-appointment:
     build:
       context: .
       dockerfile: Dockerfile
-    depends_on:
-      app:
-        condition: service_healthy
     environment:
-      - CYPRESS_BASE_URL=http://app:80
+      - CYPRESS_BASE_URL=https://katalon-demo-cura.herokuapp.com
     command: >
-      sh -c "npx cypress run --spec 'cypress/e2e/regression/dashboard/**'
-      && npx mochawesome-merge mochawesome-temp/*.json -o mochawesome-report/dashboard-merged.json
-      && npx marge mochawesome-report/dashboard-merged.json -f dashboard-report -o mochawesome-report"
+      sh -c "npx cypress run --spec 'cypress/e2e/regression/appointment/**'
+      && npx mochawesome-merge mochawesome-temp/*.json -o mochawesome-report/appointment-merged.json
+      && npx marge mochawesome-report/appointment-merged.json -f appointment-report -o mochawesome-report"
     volumes:
       - ./mochawesome-report:/app/mochawesome-report
-      - ./mochawesome-temp/dashboard:/app/mochawesome-temp
-      - ./cypress/videos/dashboard:/app/cypress/videos
-      - ./cypress/screenshots/dashboard:/app/cypress/screenshots
+      - ./mochawesome-temp/appointment:/app/mochawesome-temp
+      - ./cypress/videos/appointment:/app/cypress/videos
+      - ./cypress/screenshots/appointment:/app/cypress/screenshots
     profiles:
       - parallel
 
-  cypress-users:
+  cypress-confirmation:
     build:
       context: .
       dockerfile: Dockerfile
-    depends_on:
-      app:
-        condition: service_healthy
     environment:
-      - CYPRESS_BASE_URL=http://app:80
+      - CYPRESS_BASE_URL=https://katalon-demo-cura.herokuapp.com
     command: >
-      sh -c "npx cypress run --spec 'cypress/e2e/regression/user-management/**'
-      && npx mochawesome-merge mochawesome-temp/*.json -o mochawesome-report/users-merged.json
-      && npx marge mochawesome-report/users-merged.json -f users-report -o mochawesome-report"
+      sh -c "npx cypress run --spec 'cypress/e2e/regression/confirmation/**'
+      && npx mochawesome-merge mochawesome-temp/*.json -o mochawesome-report/confirmation-merged.json
+      && npx marge mochawesome-report/confirmation-merged.json -f confirmation-report -o mochawesome-report"
     volumes:
       - ./mochawesome-report:/app/mochawesome-report
-      - ./mochawesome-temp/users:/app/mochawesome-temp
-      - ./cypress/videos/users:/app/cypress/videos
-      - ./cypress/screenshots/users:/app/cypress/screenshots
+      - ./mochawesome-temp/confirmation:/app/mochawesome-temp
+      - ./cypress/videos/confirmation:/app/cypress/videos
+      - ./cypress/screenshots/confirmation:/app/cypress/screenshots
     profiles:
       - parallel
 
-  cypress-forms:
+  cypress-history:
     build:
       context: .
       dockerfile: Dockerfile
-    depends_on:
-      app:
-        condition: service_healthy
     environment:
-      - CYPRESS_BASE_URL=http://app:80
+      - CYPRESS_BASE_URL=https://katalon-demo-cura.herokuapp.com
     command: >
-      sh -c "npx cypress run --spec 'cypress/e2e/regression/forms/**'
-      && npx mochawesome-merge mochawesome-temp/*.json -o mochawesome-report/forms-merged.json
-      && npx marge mochawesome-report/forms-merged.json -f forms-report -o mochawesome-report"
+      sh -c "npx cypress run --spec 'cypress/e2e/regression/history/**'
+      && npx mochawesome-merge mochawesome-temp/*.json -o mochawesome-report/history-merged.json
+      && npx marge mochawesome-report/history-merged.json -f history-report -o mochawesome-report"
     volumes:
       - ./mochawesome-report:/app/mochawesome-report
-      - ./mochawesome-temp/forms:/app/mochawesome-temp
-      - ./cypress/videos/forms:/app/cypress/videos
-      - ./cypress/screenshots/forms:/app/cypress/screenshots
+      - ./mochawesome-temp/history:/app/mochawesome-temp
+      - ./cypress/videos/history:/app/cypress/videos
+      - ./cypress/screenshots/history:/app/cypress/screenshots
     profiles:
       - parallel
 
@@ -123,11 +92,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    depends_on:
-      app:
-        condition: service_healthy
     environment:
-      - CYPRESS_BASE_URL=http://app:80
+      - CYPRESS_BASE_URL=https://katalon-demo-cura.herokuapp.com
     command: >
       sh -c "npx cypress run --spec 'cypress/e2e/regression/api-validation/**'
       && npx mochawesome-merge mochawesome-temp/*.json -o mochawesome-report/api-merged.json

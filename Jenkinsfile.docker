@@ -8,9 +8,7 @@ pipeline {
     }
 
     environment {
-        CYPRESS_BASE_URL = credentials('CYPRESS_BASE_URL')
-        CYPRESS_USERNAME = credentials('CYPRESS_USERNAME')
-        CYPRESS_PASSWORD = credentials('CYPRESS_PASSWORD')
+        CYPRESS_BASE_URL = 'https://katalon-demo-cura.herokuapp.com'
     }
 
     options {
@@ -61,14 +59,11 @@ pipeline {
                     }
                     sh """
                         docker run --rm \
-                            --network host \
                             -v \${WORKSPACE}/mochawesome-report:/app/mochawesome-report \
                             -v \${WORKSPACE}/mochawesome-temp:/app/mochawesome-temp \
                             -v \${WORKSPACE}/cypress/videos:/app/cypress/videos \
                             -v \${WORKSPACE}/cypress/screenshots:/app/cypress/screenshots \
                             -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
-                            -e CYPRESS_USERNAME=${CYPRESS_USERNAME} \
-                            -e CYPRESS_PASSWORD=${CYPRESS_PASSWORD} \
                             cypress-tests \
                             sh -c "npx cypress run --spec '${specPath}' \
                                 --reporter mochawesome \
@@ -89,13 +84,10 @@ pipeline {
                     steps {
                         sh """
                             docker run --rm \
-                                --network host \
                                 -v \${WORKSPACE}/mochawesome-temp/auth:/app/mochawesome-temp \
                                 -v \${WORKSPACE}/cypress/screenshots/auth:/app/cypress/screenshots \
                                 -v \${WORKSPACE}/cypress/videos/auth:/app/cypress/videos \
                                 -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
-                                -e CYPRESS_USERNAME=${CYPRESS_USERNAME} \
-                                -e CYPRESS_PASSWORD=${CYPRESS_PASSWORD} \
                                 cypress-tests \
                                 sh -c "npx cypress run --spec 'cypress/e2e/regression/authentication/**' \
                                     --reporter mochawesome \
@@ -104,57 +96,48 @@ pipeline {
                     }
                 }
 
-                stage('Dashboard') {
+                stage('Appointment') {
                     steps {
                         sh """
                             docker run --rm \
-                                --network host \
-                                -v \${WORKSPACE}/mochawesome-temp/dashboard:/app/mochawesome-temp \
-                                -v \${WORKSPACE}/cypress/screenshots/dashboard:/app/cypress/screenshots \
-                                -v \${WORKSPACE}/cypress/videos/dashboard:/app/cypress/videos \
+                                -v \${WORKSPACE}/mochawesome-temp/appointment:/app/mochawesome-temp \
+                                -v \${WORKSPACE}/cypress/screenshots/appointment:/app/cypress/screenshots \
+                                -v \${WORKSPACE}/cypress/videos/appointment:/app/cypress/videos \
                                 -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
-                                -e CYPRESS_USERNAME=${CYPRESS_USERNAME} \
-                                -e CYPRESS_PASSWORD=${CYPRESS_PASSWORD} \
                                 cypress-tests \
-                                sh -c "npx cypress run --spec 'cypress/e2e/regression/dashboard/**' \
+                                sh -c "npx cypress run --spec 'cypress/e2e/regression/appointment/**' \
                                     --reporter mochawesome \
                                     --reporter-options reportDir=mochawesome-temp,overwrite=false,html=false,json=true"
                         """
                     }
                 }
 
-                stage('User Mgmt') {
+                stage('Confirmation') {
                     steps {
                         sh """
                             docker run --rm \
-                                --network host \
-                                -v \${WORKSPACE}/mochawesome-temp/users:/app/mochawesome-temp \
-                                -v \${WORKSPACE}/cypress/screenshots/users:/app/cypress/screenshots \
-                                -v \${WORKSPACE}/cypress/videos/users:/app/cypress/videos \
+                                -v \${WORKSPACE}/mochawesome-temp/confirmation:/app/mochawesome-temp \
+                                -v \${WORKSPACE}/cypress/screenshots/confirmation:/app/cypress/screenshots \
+                                -v \${WORKSPACE}/cypress/videos/confirmation:/app/cypress/videos \
                                 -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
-                                -e CYPRESS_USERNAME=${CYPRESS_USERNAME} \
-                                -e CYPRESS_PASSWORD=${CYPRESS_PASSWORD} \
                                 cypress-tests \
-                                sh -c "npx cypress run --spec 'cypress/e2e/regression/user-management/**' \
+                                sh -c "npx cypress run --spec 'cypress/e2e/regression/confirmation/**' \
                                     --reporter mochawesome \
                                     --reporter-options reportDir=mochawesome-temp,overwrite=false,html=false,json=true"
                         """
                     }
                 }
 
-                stage('Forms') {
+                stage('History') {
                     steps {
                         sh """
                             docker run --rm \
-                                --network host \
-                                -v \${WORKSPACE}/mochawesome-temp/forms:/app/mochawesome-temp \
-                                -v \${WORKSPACE}/cypress/screenshots/forms:/app/cypress/screenshots \
-                                -v \${WORKSPACE}/cypress/videos/forms:/app/cypress/videos \
+                                -v \${WORKSPACE}/mochawesome-temp/history:/app/mochawesome-temp \
+                                -v \${WORKSPACE}/cypress/screenshots/history:/app/cypress/screenshots \
+                                -v \${WORKSPACE}/cypress/videos/history:/app/cypress/videos \
                                 -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
-                                -e CYPRESS_USERNAME=${CYPRESS_USERNAME} \
-                                -e CYPRESS_PASSWORD=${CYPRESS_PASSWORD} \
                                 cypress-tests \
-                                sh -c "npx cypress run --spec 'cypress/e2e/regression/forms/**' \
+                                sh -c "npx cypress run --spec 'cypress/e2e/regression/history/**' \
                                     --reporter mochawesome \
                                     --reporter-options reportDir=mochawesome-temp,overwrite=false,html=false,json=true"
                         """
@@ -165,13 +148,10 @@ pipeline {
                     steps {
                         sh """
                             docker run --rm \
-                                --network host \
                                 -v \${WORKSPACE}/mochawesome-temp/api:/app/mochawesome-temp \
                                 -v \${WORKSPACE}/cypress/screenshots/api:/app/cypress/screenshots \
                                 -v \${WORKSPACE}/cypress/videos/api:/app/cypress/videos \
                                 -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
-                                -e CYPRESS_USERNAME=${CYPRESS_USERNAME} \
-                                -e CYPRESS_PASSWORD=${CYPRESS_PASSWORD} \
                                 cypress-tests \
                                 sh -c "npx cypress run --spec 'cypress/e2e/regression/api-validation/**' \
                                     --reporter mochawesome \

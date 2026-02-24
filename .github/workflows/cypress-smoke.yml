@@ -38,9 +38,7 @@ jobs:
           browser: chrome
           config: video=true
         env:
-          CYPRESS_BASE_URL: ${{ secrets.CYPRESS_BASE_URL }}
-          CYPRESS_USERNAME: ${{ secrets.CYPRESS_USERNAME }}
-          CYPRESS_PASSWORD: ${{ secrets.CYPRESS_PASSWORD }}
+          CYPRESS_BASE_URL: https://katalon-demo-cura.herokuapp.com
 
       # ── 5. Generate Mochawesome report ──
       - name: Merge Mochawesome reports
@@ -108,24 +106,3 @@ jobs:
               repo: context.repo.repo,
               body: summary
             });
-
-      # ── 10. Slack notification on failure (uncomment when ready) ──
-      # - name: Notify Slack on failure
-      #   if: failure()
-      #   uses: slackapi/slack-github-action@v1.27.0
-      #   with:
-      #     payload: |
-      #       {
-      #         "text": "❌ Cypress Smoke Tests FAILED on ${{ github.ref_name }}",
-      #         "blocks": [
-      #           {
-      #             "type": "section",
-      #             "text": {
-      #               "type": "mrkdwn",
-      #               "text": "❌ *Cypress Smoke Tests FAILED*\n*Branch:* ${{ github.ref_name }}\n*Commit:* ${{ github.sha }}\n*Triggered by:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-      #             }
-      #           }
-      #         ]
-      #       }
-      #   env:
-      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

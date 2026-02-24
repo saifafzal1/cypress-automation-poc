@@ -1,35 +1,24 @@
 {
-  "contactForm": {
-    "valid": {
-      "name": "Test User",
-      "email": "test@example.com",
-      "subject": "POC Inquiry",
-      "message": "This is a test message for the contact form validation."
+  "appointmentForm": {
+    "validData": {
+      "facility": "Tokyo CURA Healthcare Center",
+      "readmission": true,
+      "program": "Medicare",
+      "visitDate": "10/02/2026",
+      "comment": "Testing appointment form submission"
     },
-    "invalidEmail": {
-      "name": "Test User",
-      "email": "invalid-email",
-      "subject": "Test",
-      "message": "Testing with invalid email."
-    },
-    "empty": {
-      "name": "",
-      "email": "",
-      "subject": "",
-      "message": ""
+    "allFacilities": [
+      "Tokyo CURA Healthcare Center",
+      "Hongkong CURA Healthcare Center",
+      "Seoul CURA Healthcare Center"
+    ],
+    "allPrograms": ["Medicare", "Medicaid", "None"],
+    "noComment": {
+      "facility": "Seoul CURA Healthcare Center",
+      "readmission": false,
+      "program": "None",
+      "visitDate": "20/03/2026",
+      "comment": ""
     }
-  },
-  "profileForm": {
-    "updated": {
-      "name": "Updated User",
-      "email": "updated@example.com",
-      "phone": "+1-555-0123",
-      "bio": "Updated bio for testing purposes."
-    }
-  },
-  "searchForm": {
-    "validQuery": "automation",
-    "noResultsQuery": "xyznonexistent123",
-    "specialCharsQuery": "<script>alert('test')</script>"
   }
 }

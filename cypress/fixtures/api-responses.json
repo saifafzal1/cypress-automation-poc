@@ -1,27 +1,23 @@
 {
-  "users": {
-    "endpoint": "/api/users",
-    "createPayload": {
-      "name": "API Test User",
-      "email": "api.test@example.com",
-      "role": "Viewer"
-    },
-    "updatePayload": {
-      "name": "API Test User Updated",
-      "email": "api.updated@example.com"
-    }
+  "homepage": {
+    "url": "/",
+    "expectedStatus": 200,
+    "expectedTitle": "CURA Healthcare Service"
   },
-  "products": {
-    "endpoint": "/api/products",
-    "createPayload": {
-      "name": "Test Product",
-      "price": 29.99,
-      "category": "Electronics",
-      "stock": 100
-    },
-    "updatePayload": {
-      "name": "Updated Product",
-      "price": 39.99
-    }
+  "loginPage": {
+    "url": "/profile.php#login",
+    "expectedStatus": 200
+  },
+  "appointmentPage": {
+    "url": "/#appointment",
+    "expectedStatus": 200
+  },
+  "historyPage": {
+    "url": "/history.php#history",
+    "expectedStatus": 200
+  },
+  "authenticate": {
+    "url": "/authenticate.php",
+    "method": "POST"
   }
 }

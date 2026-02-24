@@ -1,21 +1,21 @@
-import HomePage from '../../pages/HomePage'
+import homePage from '../../pages/HomePage'
 
-describe('Smoke: Homepage', () => {
+describe('Smoke — Homepage', () => {
   beforeEach(() => {
-    cy.fixture('users').then((users) => {
-      cy.login(users.validUser.username, users.validUser.password)
-    })
+    homePage.visitHomePage()
   })
 
-  it('should load the homepage with key elements visible', () => {
-    HomePage.visitHomePage()
-    HomePage.verifyHeroVisible()
-    HomePage.verifyFooterLinks()
+  it('should load the homepage successfully', () => {
+    homePage.verifyHeroVisible()
+    homePage.verifyPageTitle('CURA Healthcare Service')
   })
 
-  it('should display the navigation menu', () => {
-    HomePage.visitHomePage()
-    HomePage.verifyElementVisible(HomePage.navMenu)
-    HomePage.getNavItems().should('have.length.greaterThan', 0)
+  it('should display the Make Appointment button', () => {
+    homePage.verifyMakeAppointmentButtonVisible()
+  })
+
+  it('should navigate to login when clicking Make Appointment', () => {
+    homePage.clickMakeAppointment()
+    cy.url().should('include', 'profile.php')
   })
 })
