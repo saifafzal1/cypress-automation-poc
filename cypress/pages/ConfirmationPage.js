@@ -3,7 +3,7 @@ import BasePage from './BasePage'
 class ConfirmationPage extends BasePage {
   // Selectors
   confirmationSection = 'section#summary'
-  confirmationHeading = 'h2'
+  confirmationHeading = 'section#summary h2'
   facilityLabel = '#facility'
   readmissionLabel = '#hospital_readmission'
   programLabel = '#program'

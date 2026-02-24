@@ -18,7 +18,7 @@ Cypress.Commands.add('loginWithFixture', () => {
 Cypress.Commands.add('bookAppointment', (appointmentData) => {
   cy.get('#combo_facility').select(appointmentData.facility)
   if (appointmentData.readmission) {
-    cy.get('#chk_hosp498').check()
+    cy.get('#chk_hospotal_readmission').check()
   }
   const programMap = {
     'Medicare': '#radio_program_medicare',

@@ -6,8 +6,8 @@ class LoginPage extends BasePage {
   passwordInput = '#txt-password'
   loginButton = '#btn-login'
   loginSection = 'section#login'
-  loginHeader = 'h2'
-  errorMessage = '.text-danger'
+  loginHeader = 'section#login h2'
+  errorMessage = 'p.text-danger'
 
   visitLoginPage() {
     this.visit('/profile.php#login')

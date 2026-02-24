@@ -3,14 +3,14 @@ import BasePage from './BasePage'
 class AppointmentPage extends BasePage {
   // Selectors
   facilityDropdown = '#combo_facility'
-  hospitalReadmissionCheckbox = '#chk_hosp498'
+  hospitalReadmissionCheckbox = '#chk_hospotal_readmission'
   medicareRadio = '#radio_program_medicare'
   medicaidRadio = '#radio_program_medicaid'
   noneRadio = '#radio_program_none'
   visitDateInput = '#txt_visit_date'
   commentTextarea = '#txt_comment'
   bookAppointmentButton = '#btn-book-appointment'
-  appointmentHeading = 'h2'
+  appointmentHeading = 'section#appointment h2'
 
   visitAppointmentPage() {
     this.visit('/#appointment')

@@ -3,7 +3,7 @@ import BasePage from './BasePage'
 class HomePage extends BasePage {
   // Selectors
   makeAppointmentButton = '#btn-make-appointment'
-  heroSection = 'section#top'
+  heroSection = 'header#top'
   heroTitle = '.text-vertical-center h1'
   navbar = '.navbar'
   sidebarToggle = '#menu-toggle'
