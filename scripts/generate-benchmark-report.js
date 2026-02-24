@@ -3,29 +3,109 @@
 /**
  * Cypress Version Benchmark Report Generator
  *
- * Reads benchmark-results/metrics.json and generates
- * benchmark-report/index.html with Chart.js visualizations.
+ * Reads benchmark-results/*.metric files and Cypress log files,
+ * then generates benchmark-report/index.html with Chart.js visualizations.
  */
 
 const fs = require('fs');
 const path = require('path');
 
-const METRICS_FILE = path.join(__dirname, '..', 'benchmark-results', 'metrics.json');
+const RESULTS_DIR = path.join(__dirname, '..', 'benchmark-results');
 const OUTPUT_DIR = path.join(__dirname, '..', 'benchmark-report');
 const OUTPUT_FILE = path.join(OUTPUT_DIR, 'index.html');
 
-// Read metrics
-let metrics;
-try {
-  metrics = JSON.parse(fs.readFileSync(METRICS_FILE, 'utf8'));
-} catch (e) {
-  console.error('Failed to read metrics.json:', e.message);
-  process.exit(1);
-}
+// Read all .metric files
+const metricFiles = fs.readdirSync(RESULTS_DIR)
+  .filter(f => f.endsWith('.metric'))
+  .sort((a, b) => {
+    // Sort by version number
+    const va = a.replace('.metric', '').split('.').map(Number);
+    const vb = b.replace('.metric', '').split('.').map(Number);
+    for (let i = 0; i < 3; i++) {
+      if ((va[i] || 0) !== (vb[i] || 0)) return (va[i] || 0) - (vb[i] || 0);
+    }
+    return 0;
+  });
 
-// Filter out entries with no results
+console.log(`Found ${metricFiles.length} metric files: ${metricFiles.join(', ')}`);
+
+// Parse each metric file and its corresponding log
+const metrics = metricFiles.map(file => {
+  const content = fs.readFileSync(path.join(RESULTS_DIR, file), 'utf8');
+  const props = {};
+  content.split('\n').forEach(line => {
+    const eq = line.indexOf('=');
+    if (eq > 0) {
+      props[line.substring(0, eq).trim()] = line.substring(eq + 1).trim();
+    }
+  });
+
+  const version = props.version || file.replace('.metric', '');
+  const totalTime = parseInt(props.totalTime) || 0;
+  let tests = 0, passes = 0, failures = 0, duration = 0;
+
+  // Try to parse the Cypress log file for detailed results
+  const logFile = path.join(RESULTS_DIR, `cypress-${version}.log`);
+  if (fs.existsSync(logFile)) {
+    const log = fs.readFileSync(logFile, 'utf8');
+    // Strip ANSI codes
+    const clean = log.replace(/\x1b\[[0-9;]*m/g, '');
+
+    // Count individual test passing marks (✓)
+    const passMatches = log.match(/✓/g);
+    passes = passMatches ? passMatches.length : 0;
+
+    // Count individual test failure marks
+    const failMatches = clean.match(/\d+ failing/g);
+    if (failMatches) {
+      failMatches.forEach(m => { failures += parseInt(m) || 0; });
+    }
+
+    tests = passes + failures;
+
+    // Extract duration from summary line "All specs passed!  MM:SS  ..."
+    const summaryMatch = clean.match(/(?:All specs passed!|specs? failed)[^\n]*?(\d+):(\d+)/);
+    if (summaryMatch) {
+      const mins = parseInt(summaryMatch[1]);
+      const secs = parseInt(summaryMatch[2]);
+      duration = (mins * 60 + secs) * 1000;
+    }
+
+    // If no summary, try to sum up per-spec durations
+    if (duration === 0) {
+      const specDurations = clean.match(/\d+:\d+(?=\s+\d+\s+\d+)/g);
+      if (specDurations) {
+        specDurations.forEach(d => {
+          const [m, s] = d.split(':').map(Number);
+          duration += (m * 60 + s) * 1000;
+        });
+      }
+    }
+  }
+
+  const entry = {
+    version,
+    duration,
+    totalTime,
+    tests,
+    passes,
+    failures,
+    pending: 0
+  };
+
+  if (tests === 0) entry.error = 'No results collected';
+
+  console.log(`  ${version}: ${(duration/1000).toFixed(1)}s test time, ${tests} tests (${passes} passed, ${failures} failed), ${(totalTime/1000).toFixed(1)}s total`);
+
+  return entry;
+});
+
+// Also write metrics.json for archiving
+fs.writeFileSync(path.join(RESULTS_DIR, 'metrics.json'), JSON.stringify(metrics, null, 2));
+
+// Filter out entries with no results for charts
 const validMetrics = metrics.filter(m => m.duration > 0);
-const allMetrics = metrics; // keep all for the table (shows errors too)
+const allMetrics = metrics;
 
 if (validMetrics.length === 0) {
   console.error('No valid benchmark results found.');
@@ -38,14 +118,13 @@ const last = validMetrics[validMetrics.length - 1];
 const durationImprovement = ((1 - last.duration / first.duration) * 100).toFixed(1);
 const totalTimeImprovement = ((1 - last.totalTime / first.totalTime) * 100).toFixed(1);
 const timeSavedPerRun = ((first.totalTime - last.totalTime) / 1000).toFixed(1);
-const dailySavings = (timeSavedPerRun * 10 / 60).toFixed(1); // assuming 10 runs/day
-const annualSavings = (dailySavings * 260 / 60).toFixed(0); // 260 working days
+const dailySavings = (timeSavedPerRun * 10 / 60).toFixed(1);
+const annualSavings = (dailySavings * 260 / 60).toFixed(0);
 
 // Chart data
 const labels = validMetrics.map(m => 'v' + m.version);
 const durations = validMetrics.map(m => (m.duration / 1000).toFixed(1));
 const totalTimes = validMetrics.map(m => (m.totalTime / 1000).toFixed(1));
-const passRates = validMetrics.map(m => m.tests > 0 ? ((m.passes / m.tests) * 100).toFixed(0) : 0);
 
 // Generate date string
 const now = new Date().toISOString().split('T')[0];

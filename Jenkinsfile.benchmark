@@ -26,7 +26,6 @@ pipeline {
                 sh '''
                     rm -rf benchmark-results benchmark-report
                     mkdir -p benchmark-results benchmark-report
-                    echo "[]" > benchmark-results/metrics.json
                 '''
             }
         }
@@ -101,10 +100,16 @@ pipeline {
         stage('Generate Report') {
             steps {
                 sh '''
+                    echo "=== Collected metrics files ==="
+                    ls -la benchmark-results/
+                    echo "=== Contents of metric files ==="
+                    cat benchmark-results/*.metric 2>/dev/null || echo "No metric files found"
+                    echo "==============================="
+
                     echo "Generating benchmark comparison report..."
-                    CONTAINER_ID=$(docker create --entrypoint="" node:20-alpine sh -c "mkdir -p /app && node /app/scripts/generate-benchmark-report.js")
+                    CONTAINER_ID=$(docker create --entrypoint="" node:20-alpine sh -c "mkdir -p /app/benchmark-report && node /app/scripts/generate-benchmark-report.js")
                     docker cp ${WORKSPACE}/scripts ${CONTAINER_ID}:/app/scripts
-                    docker cp ${WORKSPACE}/benchmark-results/. ${CONTAINER_ID}:/app/benchmark-results
+                    docker cp ${WORKSPACE}/benchmark-results ${CONTAINER_ID}:/app/benchmark-results
                     docker start -a ${CONTAINER_ID}
                     docker cp ${CONTAINER_ID}:/app/benchmark-report/index.html ${WORKSPACE}/benchmark-report/index.html
                     docker rm ${CONTAINER_ID}
@@ -145,12 +150,9 @@ pipeline {
 
 // ── Shared function: Run benchmark for a specific Cypress version ──
 def runBenchmark(String cypressVersion) {
-    def versionDir = "benchmark-results/v${cypressVersion}"
     def containerName = "cypress-bench-${cypressVersion.replace('.', '-')}"
 
     sh """
-        mkdir -p ${versionDir}
-
         echo "========================================"
         echo "  Benchmarking Cypress ${cypressVersion}"
         echo "========================================"
@@ -158,21 +160,13 @@ def runBenchmark(String cypressVersion) {
         # Record start time
         START_TIME=\$(date +%s%N)
 
-        # Create container, copy files in, run tests, copy results out
+        # Create container - run Cypress and save output log
         docker create --name ${containerName} \
             -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
             -w /app \
             --entrypoint="" \
             cypress/included:${cypressVersion} \
-            sh -c "
-                npm install mochawesome@7 mochawesome-merge@4 mochawesome-report-generator@6 --legacy-peer-deps 2>/dev/null
-                mkdir -p benchmark-output
-                npx cypress run \
-                    --spec 'cypress/e2e/smoke/**' \
-                    --reporter mochawesome \
-                    --reporter-options reportDir=benchmark-output,overwrite=false,html=false,json=true \
-                    || true
-            "
+            sh -c "npx cypress run --spec 'cypress/e2e/smoke/**' 2>&1 | tee /app/cypress-output.log; exit 0"
 
         # Copy test files into container
         docker cp \${WORKSPACE}/cypress ${containerName}:/app/cypress
@@ -181,56 +175,58 @@ def runBenchmark(String cypressVersion) {
         # Run the container
         docker start -a ${containerName} || true
 
-        # Copy results out
-        docker cp ${containerName}:/app/benchmark-output/. \${WORKSPACE}/${versionDir}/ 2>/dev/null || true
-
-        # Cleanup container
-        docker rm -f ${containerName} 2>/dev/null || true
-
         # Record end time
         END_TIME=\$(date +%s%N)
         TOTAL_TIME_MS=\$(( (END_TIME - START_TIME) / 1000000 ))
         echo "Container total time: \${TOTAL_TIME_MS}ms"
 
-        # Extract metrics using node in a container
-        EXTRACT_CONTAINER=\$(docker create --entrypoint="" node:20-alpine node -e "
-            const fs = require('fs');
-            const dir = '/data/v${cypressVersion}';
-            let files = [];
-            try { files = fs.readdirSync(dir).filter(f => f.endsWith('.json')).map(f => dir + '/' + f); } catch(e) {}
+        # Copy the Cypress output log from the container
+        docker cp ${containerName}:/app/cypress-output.log \${WORKSPACE}/benchmark-results/cypress-${cypressVersion}.log 2>/dev/null || echo "WARNING: Could not copy output log"
 
-            let totalDuration = 0, totalTests = 0, totalPasses = 0, totalFailures = 0, totalPending = 0;
-            files.forEach(file => {
-                try {
-                    const s = JSON.parse(fs.readFileSync(file, 'utf8')).stats || {};
-                    totalDuration += (s.duration || 0);
-                    totalTests += (s.tests || 0);
-                    totalPasses += (s.passes || 0);
-                    totalFailures += (s.failures || 0);
-                    totalPending += (s.pending || 0);
-                } catch(e) {}
-            });
+        # Cleanup container
+        docker rm -f ${containerName} 2>/dev/null || true
 
-            const entry = {
-                version: '${cypressVersion}',
-                duration: totalDuration,
-                totalTime: \${TOTAL_TIME_MS},
-                tests: totalTests,
-                passes: totalPasses,
-                failures: totalFailures,
-                pending: totalPending
-            };
-            if (totalTests === 0) entry.error = 'No results collected';
+        # Write a metric file for this version (simple key=value format)
+        METRIC_FILE=\${WORKSPACE}/benchmark-results/${cypressVersion}.metric
+        echo "version=${cypressVersion}" > \${METRIC_FILE}
+        echo "totalTime=\${TOTAL_TIME_MS}" >> \${METRIC_FILE}
 
-            console.log('Cypress ${cypressVersion}: ' + (totalDuration/1000).toFixed(1) + 's test time, ' + totalTests + ' tests');
+        LOG_FILE=\${WORKSPACE}/benchmark-results/cypress-${cypressVersion}.log
+        if [ -f "\${LOG_FILE}" ]; then
+            echo "=== Log file size: \$(wc -c < "\${LOG_FILE}") bytes ==="
 
-            const metrics = JSON.parse(fs.readFileSync('/data/metrics.json', 'utf8'));
-            metrics.push(entry);
-            fs.writeFileSync('/data/metrics.json', JSON.stringify(metrics, null, 2));
-        ")
-        docker cp \${WORKSPACE}/benchmark-results/. \${EXTRACT_CONTAINER}:/data
-        docker start -a \${EXTRACT_CONTAINER}
-        docker cp \${EXTRACT_CONTAINER}:/data/metrics.json \${WORKSPACE}/benchmark-results/metrics.json
-        docker rm -f \${EXTRACT_CONTAINER} 2>/dev/null || true
+            # Strip ANSI codes for parsing
+            CLEAN_LOG=\${WORKSPACE}/benchmark-results/cypress-${cypressVersion}.clean.log
+            sed 's/\\x1b\\[[0-9;]*m//g' "\${LOG_FILE}" > "\${CLEAN_LOG}"
+
+            # Look for the spec result table rows
+            # Each spec: "✔  filename.cy.js  MM:SS  tests  passes  failures  pending  skipped"
+            # Final:     "✔  All specs passed!  MM:SS  tests  passes  failures  pending  skipped"
+            # Or:        "✖  N of N failed"
+
+            # Count passing checkmarks (✓ or ✔) for individual test cases
+            PASS_MARKS=\$(grep -c '✓' "\${LOG_FILE}" 2>/dev/null || echo "0")
+            FAIL_MARKS=\$(grep -c 'failing' "\${LOG_FILE}" 2>/dev/null || echo "0")
+            echo "passMarks=\${PASS_MARKS}" >> \${METRIC_FILE}
+            echo "failMarks=\${FAIL_MARKS}" >> \${METRIC_FILE}
+
+            # Extract total duration from "All specs passed! MM:SS" or similar
+            DURATION_LINE=\$(grep -E '(All specs passed|specs? failed)' "\${CLEAN_LOG}" | tail -1 || true)
+            echo "durationLine=\${DURATION_LINE}" >> \${METRIC_FILE}
+
+            # Grep the results summary table for numbers
+            # Try to find the bottom summary row that has totals
+            echo "=== Spec result lines ==="
+            grep -E '\\.(cy|spec)\\.' "\${CLEAN_LOG}" | grep -E '[0-9]+:[0-9]+' || true
+            echo "=== Summary line ==="
+            echo "\${DURATION_LINE}"
+        else
+            echo "WARNING: No log file found for ${cypressVersion}"
+            echo "passMarks=0" >> \${METRIC_FILE}
+            echo "failMarks=0" >> \${METRIC_FILE}
+        fi
+
+        echo "Metric file written: \${METRIC_FILE}"
+        cat \${METRIC_FILE}
     """
 }
