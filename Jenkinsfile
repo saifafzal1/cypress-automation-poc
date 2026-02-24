@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        nodejs 'NodeJS-20'  // Configured in Jenkins Global Tool Configuration
-    }
-
     parameters {
         choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Target environment')
         choice(name: 'BROWSER', choices: ['chrome', 'firefox', 'electron'], description: 'Browser to run tests')
@@ -37,15 +33,7 @@ pipeline {
             }
         }
 
-        // ── Stage 2: Install Dependencies ──
-        stage('Install Dependencies') {
-            steps {
-                sh 'node -v && npm -v'
-                sh 'npm ci'
-            }
-        }
-
-        // ── Stage 3: Clean Previous Reports ──
+        // ── Stage 2: Clean Previous Reports ──
         stage('Clean Reports') {
             steps {
                 sh 'rm -rf mochawesome-temp mochawesome-report'
@@ -53,16 +41,23 @@ pipeline {
             }
         }
 
-        // ── Stage 4: Run Tests ──
+        // ── Stage 3: Run Tests ──
         stage('Run Tests') {
             stages {
 
-                // ── 4a: Smoke / Sanity / All (non-parallel) ──
+                // ── 3a: Smoke / Sanity / All (single container) ──
                 stage('Run Suite') {
                     when {
                         expression { params.SUITE != 'regression' }
                     }
+                    agent {
+                        docker {
+                            image 'cypress/included:15.3.0'
+                            args '-v ${WORKSPACE}:/app -w /app'
+                        }
+                    }
                     steps {
+                        sh 'npm ci'
                         script {
                             def specPath = ''
                             switch (params.SUITE) {
@@ -87,12 +82,19 @@ pipeline {
                     }
                 }
 
-                // ── 4b: Regression — Sequential ──
+                // ── 3b: Regression — Sequential ──
                 stage('Regression (Sequential)') {
                     when {
                         expression { params.SUITE == 'regression' && !params.PARALLEL }
                     }
+                    agent {
+                        docker {
+                            image 'cypress/included:15.3.0'
+                            args '-v ${WORKSPACE}:/app -w /app'
+                        }
+                    }
                     steps {
+                        sh 'npm ci'
                         sh """
                             npx cypress run \
                                 --browser ${params.BROWSER} \
@@ -103,7 +105,7 @@ pipeline {
                     }
                 }
 
-                // ── 4c: Regression — Parallel (5 sub-suites) ──
+                // ── 3c: Regression — Parallel (5 sub-suites) ──
                 stage('Regression (Parallel)') {
                     when {
                         expression { params.SUITE == 'regression' && params.PARALLEL }
@@ -236,7 +238,7 @@ pipeline {
             } // end inner stages
         } // end Run Tests
 
-        // ── Stage 5: Collect Parallel Results ──
+        // ── Stage 4: Collect Parallel Results ──
         stage('Collect Parallel Results') {
             when {
                 expression { params.SUITE == 'regression' && params.PARALLEL }
@@ -250,10 +252,17 @@ pipeline {
             }
         }
 
-        // ── Stage 6: Generate Consolidated Report ──
+        // ── Stage 5: Generate Consolidated Report ──
         stage('Generate Report') {
+            agent {
+                docker {
+                    image 'cypress/included:15.3.0'
+                    args '-v ${WORKSPACE}:/app -w /app'
+                }
+            }
             steps {
                 sh '''
+                    npm ci
                     echo "Merging all Mochawesome JSON files..."
                     npx mochawesome-merge "mochawesome-temp/**/*.json" -o mochawesome-report/merged.json
                     npx marge mochawesome-report/merged.json -f report -o mochawesome-report
@@ -262,7 +271,7 @@ pipeline {
             }
         }
 
-        // ── Stage 7: Publish Report ──
+        // ── Stage 6: Publish Report ──
         stage('Publish Report') {
             steps {
                 publishHTML(target: [
@@ -287,10 +296,10 @@ pipeline {
             archiveArtifacts artifacts: 'cypress/videos/**', allowEmptyArchive: true
         }
         success {
-            echo '✅ All Cypress tests passed!'
+            echo 'All Cypress tests passed!'
         }
         failure {
-            echo '❌ Some Cypress tests failed!'
+            echo 'Some Cypress tests failed!'
         }
         cleanup {
             cleanWs()

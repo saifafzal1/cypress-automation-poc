@@ -1,0 +1,113 @@
+jenkins:
+  systemMessage: "Cypress Automation POC - Jenkins CI/CD Server"
+  numExecutors: 2
+  mode: NORMAL
+  quietPeriod: 0
+
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "${JENKINS_ADMIN_PASSWORD:-admin123}"
+
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+tool:
+  nodejs:
+    installations:
+      - name: "NodeJS-20"
+        properties:
+          - installSource:
+              installers:
+                - nodeJSInstaller:
+                    id: "20.11.1"
+                    npmPackagesRefreshHours: 72
+
+unclassified:
+  location:
+    url: "http://localhost:8080/"
+    adminAddress: "admin@localhost"
+
+jobs:
+  - script: |
+      folder('Cypress-Tests') {
+        displayName('Cypress Tests')
+        description('Cypress Automation Test Suites')
+      }
+
+  - script: |
+      pipelineJob('Cypress-Tests/Smoke-Tests') {
+        description('Quick smoke tests to validate core functionality')
+        parameters {
+          choiceParam('ENVIRONMENT', ['dev', 'staging', 'prod'], 'Target environment')
+          choiceParam('BROWSER', ['chrome', 'firefox', 'electron'], 'Browser to run tests')
+          choiceParam('SUITE', ['smoke'], 'Test suite to run')
+          booleanParam('PARALLEL', false, 'Run in parallel')
+        }
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('https://github.com/saifafzal1/cypress-automation-poc.git')
+                }
+                branches('*/main')
+              }
+            }
+            scriptPath('Jenkinsfile')
+            lightweight(true)
+          }
+        }
+      }
+
+  - script: |
+      pipelineJob('Cypress-Tests/Regression-Tests') {
+        description('Full regression suite with parallel execution support')
+        parameters {
+          choiceParam('ENVIRONMENT', ['dev', 'staging', 'prod'], 'Target environment')
+          choiceParam('BROWSER', ['chrome', 'firefox', 'electron'], 'Browser to run tests')
+          choiceParam('SUITE', ['regression', 'smoke', 'sanity', 'all'], 'Test suite to run')
+          booleanParam('PARALLEL', true, 'Run regression suites in parallel')
+        }
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('https://github.com/saifafzal1/cypress-automation-poc.git')
+                }
+                branches('*/main')
+              }
+            }
+            scriptPath('Jenkinsfile')
+            lightweight(true)
+          }
+        }
+      }
+
+  - script: |
+      pipelineJob('Cypress-Tests/Docker-Pipeline') {
+        description('Docker-based test execution using Jenkinsfile.docker')
+        parameters {
+          choiceParam('ENVIRONMENT', ['dev', 'staging', 'prod'], 'Target environment')
+          choiceParam('SUITE', ['regression', 'smoke', 'sanity', 'all'], 'Test suite to run')
+          booleanParam('PARALLEL', true, 'Run regression suites in parallel')
+        }
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('https://github.com/saifafzal1/cypress-automation-poc.git')
+                }
+                branches('*/main')
+              }
+            }
+            scriptPath('Jenkinsfile.docker')
+            lightweight(true)
+          }
+        }
+      }

@@ -1,6 +1,25 @@
-version: '3.8'
-
 services:
+  # ── Jenkins CI/CD Server ──
+  # Access at http://localhost:8080 | Login: admin / admin123
+  jenkins:
+    build:
+      context: ./jenkins
+      dockerfile: Dockerfile
+    container_name: jenkins-cypress
+    privileged: true
+    user: root
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    environment:
+      - JENKINS_ADMIN_PASSWORD=${JENKINS_ADMIN_PASSWORD:-admin123}
+      - CASC_JENKINS_CONFIG=/var/jenkins_home/casc.yaml
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
   # ── Cypress Test Runner (all tests) ──
   # No local app needed — tests run against https://katalon-demo-cura.herokuapp.com
   cypress:
@@ -105,3 +124,7 @@ services:
       - ./cypress/screenshots/api:/app/cypress/screenshots
     profiles:
       - parallel
+
+volumes:
+  jenkins_home:
+    driver: local

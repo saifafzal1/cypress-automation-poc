@@ -1,170 +1,136 @@
-# Jenkins Setup Guide for Cypress POC
+# Jenkins Setup Guide - Quick Start
 
-## 1. Install Jenkins via Docker
+## Prerequisites
+- Docker Desktop installed and running
+
+## 1. Start Jenkins (One Command)
 
 ```bash
-docker run -d \
-  -p 8080:8080 \
-  -p 50000:50000 \
-  -v jenkins_home:/var/jenkins_home \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  --name jenkins \
-  jenkins/jenkins:lts
+docker-compose up -d jenkins
 ```
 
-> **Note**: Mounting `/var/run/docker.sock` allows Jenkins to spin up Docker containers for parallel test execution.
-
-### Get initial admin password:
+Wait ~90 seconds for Jenkins to fully start. You can check progress with:
 ```bash
-docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+docker-compose logs -f jenkins
 ```
 
-Open http://localhost:8080 and complete the setup wizard.
+Look for: `Jenkins is fully up and running`
 
----
+## 2. Access Jenkins
 
-## 2. Install Required Plugins
+1. Open **http://localhost:8080** in your browser
+2. Login with:
+   - **Username:** `admin`
+   - **Password:** `admin123`
 
-Go to **Manage Jenkins > Plugins > Available Plugins** and install:
+## 3. Run Tests
 
-| Plugin | Purpose |
-|---|---|
-| **NodeJS Plugin** | Manage Node.js installations |
-| **Docker Pipeline Plugin** | Run stages inside Docker containers |
-| **Git Plugin** | Pull code from GitHub |
-| **HTML Publisher Plugin** | Display Mochawesome reports in Jenkins UI |
-| **GitHub Plugin** | Webhook integration |
-| **Slack Notification Plugin** | Alerts on failure (optional) |
+1. Click the **Cypress-Tests** folder on the dashboard
+2. You'll see 3 pre-configured jobs:
 
-Restart Jenkins after installation.
+| Job | Description | Jenkinsfile |
+|-----|-------------|-------------|
+| **Smoke-Tests** | Quick validation of core flows | `Jenkinsfile` |
+| **Regression-Tests** | Full suite with parallel support | `Jenkinsfile` |
+| **Docker-Pipeline** | Docker-based test execution | `Jenkinsfile.docker` |
 
----
+3. Click on a job (e.g., **Smoke-Tests**)
+4. Click **Build with Parameters** in the left sidebar
+5. Select your options and click **Build**
 
-## 3. Global Tool Configuration
+## 4. View Results
 
-Go to **Manage Jenkins > Tools**:
+After a build completes:
+1. Click the build number (e.g., **#1**) in Build History
+2. **Console Output** — full test execution logs
+3. **Cypress Mochawesome Report** — HTML test report (left sidebar)
+4. **Pipeline Steps** — stage-by-stage breakdown
 
-### NodeJS
-- Click **Add NodeJS**
-- Name: `NodeJS-20`
-- Version: `NodeJS 20.x` (must match `.nvmrc`)
-- Install automatically: checked
+## 5. Job Parameters
 
----
+### Smoke-Tests
+| Parameter | Options | Default |
+|-----------|---------|---------|
+| ENVIRONMENT | dev, staging, prod | dev |
+| BROWSER | chrome, firefox, electron | chrome |
+| SUITE | smoke | smoke |
 
-## 4. Add Credentials
+### Regression-Tests
+| Parameter | Options | Default |
+|-----------|---------|---------|
+| ENVIRONMENT | dev, staging, prod | dev |
+| BROWSER | chrome, firefox, electron | chrome |
+| SUITE | regression, smoke, sanity, all | regression |
+| PARALLEL | true / false | true |
 
-Go to **Manage Jenkins > Credentials > System > Global credentials**:
+### Docker-Pipeline
+| Parameter | Options | Default |
+|-----------|---------|---------|
+| ENVIRONMENT | dev, staging, prod | dev |
+| SUITE | regression, smoke, sanity, all | regression |
+| PARALLEL | true / false | true |
 
-| ID | Type | Value |
-|---|---|---|
-| `CYPRESS_BASE_URL` | Secret text | `http://your-app-url:3000` |
-| `CYPRESS_USERNAME` | Secret text | `admin` |
-| `CYPRESS_PASSWORD` | Secret text | `Admin@123` |
-| `github-pat` | Username with password | GitHub username + PAT token |
+## 6. What's Pre-configured
 
----
+Jenkins comes ready with:
+- **NodeJS 20** tool (auto-installed on first job run)
+- **Docker CLI** for running Cypress containers
+- **HTML Publisher** for Mochawesome reports
+- **Pipeline** plugins for Jenkinsfile support
+- All jobs pointing to `https://github.com/saifafzal1/cypress-automation-poc.git`
 
-## 5. Create Jenkins Jobs
+## 7. Manage Jenkins
 
-### Job 1: Cypress-Parallel-Regression (Auto on merge to main)
-
-1. **New Item** > **Pipeline** > Name: `Cypress-Parallel-Regression`
-2. **Build Triggers**:
-   - Check **GitHub hook trigger for GITScm polling**
-3. **Pipeline**:
-   - Definition: **Pipeline script from SCM**
-   - SCM: Git
-   - Repository URL: `https://github.com/saifafzal1/cypress-automation-poc.git`
-   - Credentials: `github-pat`
-   - Branches: `*/main`
-   - Script Path: `Jenkinsfile`
-
-### Job 2: Cypress-Nightly (Cron)
-
-1. **New Item** > **Pipeline** > Name: `Cypress-Nightly`
-2. **Build Triggers**:
-   - Check **Build periodically**
-   - Schedule: `H 0 * * *` (midnight daily)
-3. **Pipeline**:
-   - Same as above, Script Path: `Jenkinsfile`
-   - Default parameters: SUITE=regression, PARALLEL=true
-
-### Job 3: Cypress-Parameterized (Manual)
-
-1. **New Item** > **Pipeline** > Name: `Cypress-Parameterized`
-2. **Check**: This project is parameterized (parameters are defined in Jenkinsfile)
-3. **Pipeline**:
-   - Same as above, Script Path: `Jenkinsfile`
-
-### Job 4: Cypress-Docker-Pipeline (Docker-based)
-
-1. **New Item** > **Pipeline** > Name: `Cypress-Docker-Pipeline`
-2. **Pipeline**:
-   - Same as above, Script Path: `Jenkinsfile.docker`
-
----
-
-## 6. GitHub Webhook Integration
-
-### On GitHub:
-1. Go to **Repository Settings > Webhooks > Add webhook**
-2. Payload URL: `http://<your-jenkins-url>:8080/github-webhook/`
-3. Content type: `application/json`
-4. Events: **Just the push event**
-5. Active: checked
-
-### On Jenkins:
-1. Go to job configuration
-2. Build Triggers > check **GitHub hook trigger for GITScm polling**
-
----
-
-## 7. Verify Parallel Execution
-
-### Demo: Sequential vs Parallel
-
-1. **Sequential run**: Trigger `Cypress-Parameterized` with:
-   - SUITE: `regression`
-   - PARALLEL: `false` (unchecked)
-   - Note the total execution time
-
-2. **Parallel run**: Trigger again with:
-   - SUITE: `regression`
-   - PARALLEL: `true` (checked)
-   - Note the total execution time
-
-Expected result: **~65-70% reduction in execution time**
-
-### Jenkins Stage View
-
-The parallel pipeline will display like this in Blue Ocean / Stage View:
-
-```
-Checkout → Install → Clean → ┌─ Auth Tests ────────┐ → Collect → Report → Publish
-                              ├─ Dashboard Tests ───┤
-                              ├─ User Mgmt Tests ───┤
-                              ├─ Forms Tests ────────┤
-                              └─ API Tests ──────────┘
+### Stop Jenkins
+```bash
+docker-compose stop jenkins
 ```
 
----
+### Restart Jenkins
+```bash
+docker-compose restart jenkins
+```
 
-## 8. View Mochawesome Report in Jenkins
+### Reset Jenkins (fresh start)
+```bash
+docker-compose down
+docker volume rm "cleo-jenkins-research_jenkins_home"
+docker-compose up -d jenkins
+```
 
-After a successful build:
-1. Go to the build page
-2. Click **Cypress Mochawesome Report** in the left sidebar
-3. The consolidated HTML report opens directly in Jenkins UI
+### Rebuild Jenkins image (after config changes)
+```bash
+docker-compose up -d --build jenkins
+```
 
----
+## 8. Custom Admin Password
 
-## 9. Slack Notifications (Optional)
+Create a `.env` file in the project root:
+```bash
+JENKINS_ADMIN_PASSWORD=your-secure-password
+```
 
-1. Install **Slack Notification Plugin**
-2. Go to **Manage Jenkins > System > Slack**
-3. Configure:
-   - Workspace: your Slack workspace
-   - Credential: Slack Bot token or Webhook URL
-   - Default channel: `#qa-automation`
-4. Uncomment the `slackSend` blocks in `Jenkinsfile`
+Then restart Jenkins:
+```bash
+docker-compose up -d --build jenkins
+```
+
+## 9. Troubleshooting
+
+### Jenkins not starting?
+```bash
+docker-compose logs jenkins        # Check error logs
+lsof -i :8080                      # Check if port is in use
+```
+
+### Docker permission issues?
+Ensure Docker Desktop is running. The Jenkins container needs access to the Docker socket.
+
+### NodeJS tool not found during build?
+The first build will auto-download NodeJS 20. This takes ~30 seconds extra on the first run.
+
+### Jobs not visible?
+Check JCasC loaded correctly:
+```bash
+docker-compose logs jenkins | grep -i "casc"
+```
