@@ -102,9 +102,9 @@ pipeline {
             steps {
                 sh '''
                     echo "Generating benchmark comparison report..."
-                    CONTAINER_ID=$(docker create --entrypoint="" node:20-alpine node /app/scripts/generate-benchmark-report.js)
+                    CONTAINER_ID=$(docker create --entrypoint="" node:20-alpine sh -c "mkdir -p /app && node /app/scripts/generate-benchmark-report.js")
                     docker cp ${WORKSPACE}/scripts ${CONTAINER_ID}:/app/scripts
-                    docker cp ${WORKSPACE}/benchmark-results ${CONTAINER_ID}:/app/benchmark-results
+                    docker cp ${WORKSPACE}/benchmark-results/. ${CONTAINER_ID}:/app/benchmark-results
                     docker start -a ${CONTAINER_ID}
                     docker cp ${CONTAINER_ID}:/app/benchmark-report/index.html ${WORKSPACE}/benchmark-report/index.html
                     docker rm ${CONTAINER_ID}
@@ -228,7 +228,7 @@ def runBenchmark(String cypressVersion) {
             metrics.push(entry);
             fs.writeFileSync('/data/metrics.json', JSON.stringify(metrics, null, 2));
         ")
-        docker cp \${WORKSPACE}/benchmark-results \${EXTRACT_CONTAINER}:/data
+        docker cp \${WORKSPACE}/benchmark-results/. \${EXTRACT_CONTAINER}:/data
         docker start -a \${EXTRACT_CONTAINER}
         docker cp \${EXTRACT_CONTAINER}:/data/metrics.json \${WORKSPACE}/benchmark-results/metrics.json
         docker rm -f \${EXTRACT_CONTAINER} 2>/dev/null || true
