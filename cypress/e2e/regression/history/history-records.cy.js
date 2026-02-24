@@ -38,10 +38,8 @@ describe('Regression — History Records', () => {
       confirmationPage.verifyConfirmationPageLoaded()
       confirmationPage.clickGoToHomepage()
 
-      // Login again and book second
-      cy.fixture('users').then((users) => {
-        cy.login(users.validUser.username, users.validUser.password)
-      })
+      // Navigate to appointment page (still logged in)
+      appointmentPage.visitAppointmentPage()
       appointmentPage.bookAppointment(appt.anotherAppointment)
       confirmationPage.verifyConfirmationPageLoaded()
 
