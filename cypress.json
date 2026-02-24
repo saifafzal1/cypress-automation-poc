@@ -2,6 +2,8 @@
   "baseUrl": "https://katalon-demo-cura.herokuapp.com",
   "viewportWidth": 1280,
   "viewportHeight": 720,
+  "integrationFolder": "cypress/e2e",
+  "supportFile": "cypress/support/e2e.js",
   "retries": {
     "runMode": 0,
     "openMode": 0
