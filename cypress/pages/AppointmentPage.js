@@ -48,10 +48,12 @@ class AppointmentPage extends BasePage {
 
   enterVisitDate(date) {
     cy.get(this.visitDateInput).clear().type(date)
+    // Dismiss the datepicker popup so it doesn't cover other elements
+    cy.get(this.appointmentHeading).click()
   }
 
   enterComment(comment) {
-    cy.get(this.commentTextarea).clear().type(comment)
+    cy.get(this.commentTextarea).clear({ force: true }).type(comment, { force: true })
   }
 
   clickBookAppointment() {

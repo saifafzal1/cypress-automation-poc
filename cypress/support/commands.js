@@ -27,8 +27,10 @@ Cypress.Commands.add('bookAppointment', (appointmentData) => {
   }
   cy.get(programMap[appointmentData.program]).check()
   cy.get('#txt_visit_date').clear().type(appointmentData.visitDate)
+  // Dismiss the datepicker popup so it doesn't cover other elements
+  cy.get('section#appointment h2').click()
   if (appointmentData.comment) {
-    cy.get('#txt_comment').clear().type(appointmentData.comment)
+    cy.get('#txt_comment').clear({ force: true }).type(appointmentData.comment, { force: true })
   }
   cy.get('#btn-book-appointment').click()
 })

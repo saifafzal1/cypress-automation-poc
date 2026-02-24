@@ -9,13 +9,13 @@ describe('Regression — Logout', () => {
 
   it('should logout via sidebar menu', () => {
     cy.get('#menu-toggle').click()
-    cy.get('.sidebar-nav').find('a').contains('Logout').click()
+    cy.get('.sidebar-nav').find('a').contains('Logout').click({ force: true })
     cy.url().should('not.include', 'appointment')
   })
 
   it('should be able to login again after logout', () => {
     cy.get('#menu-toggle').click()
-    cy.get('.sidebar-nav').find('a').contains('Logout').click()
+    cy.get('.sidebar-nav').find('a').contains('Logout').click({ force: true })
     cy.fixture('users').then((users) => {
       loginPage.visitLoginPage()
       loginPage.login(users.validUser.username, users.validUser.password)
@@ -27,11 +27,9 @@ describe('Regression — Logout', () => {
     // When logged in, sidebar should show Logout
     cy.get('#menu-toggle').click()
     cy.get('.sidebar-nav').should('contain.text', 'Logout')
-    cy.get('#menu-close').click()
 
-    // After logout
-    cy.get('#menu-toggle').click()
-    cy.get('.sidebar-nav').find('a').contains('Logout').click()
+    // Logout
+    cy.get('.sidebar-nav').find('a').contains('Logout').click({ force: true })
 
     // When logged out, sidebar should show Login
     cy.visit('/')

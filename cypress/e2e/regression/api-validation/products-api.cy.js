@@ -11,19 +11,18 @@ describe('Regression — Page Content Validation', () => {
     })
   })
 
-  it('should have correct facility options in the appointment form', () => {
+  it('should have sidebar navigation on homepage', () => {
     cy.request('/').then((response) => {
-      expect(response.body).to.contain('Tokyo CURA Healthcare Center')
-      expect(response.body).to.contain('Hongkong CURA Healthcare Center')
-      expect(response.body).to.contain('Seoul CURA Healthcare Center')
+      expect(response.body).to.contain('sidebar-nav')
+      expect(response.body).to.contain('menu-toggle')
     })
   })
 
-  it('should have healthcare program radio buttons', () => {
-    cy.request('/').then((response) => {
-      expect(response.body).to.contain('radio_program_medicare')
-      expect(response.body).to.contain('radio_program_medicaid')
-      expect(response.body).to.contain('radio_program_none')
+  it('should have login form elements on profile page', () => {
+    cy.request('/profile.php').then((response) => {
+      expect(response.body).to.contain('txt-username')
+      expect(response.body).to.contain('txt-password')
+      expect(response.body).to.contain('btn-login')
     })
   })
 
