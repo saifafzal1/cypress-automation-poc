@@ -167,16 +167,17 @@ def runBenchmark(String cypressVersion) {
         # Record start time
         START_TIME=\$(date +%s%N)
 
-        # Create container - just run cypress (no piping inside container)
+        # Create container - run benchmark script (handles dependency fixes)
         docker create --name ${containerName} \
             -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
             -w /app \
             --entrypoint="" \
             cypress/included:${cypressVersion} \
-            npx cypress run --spec 'cypress/e2e/smoke/**'
+            sh /app/run-benchmark.sh
 
-        # Copy test files into container
+        # Copy test files and runner script into container
         docker cp \${WORKSPACE}/cypress ${containerName}:/app/cypress
+        docker cp \${WORKSPACE}/scripts/run-benchmark.sh ${containerName}:/app/run-benchmark.sh
 
         # Cypress 9.x uses cypress.json; 10+ uses cypress.config.js
         MAJOR=\$(echo "${cypressVersion}" | cut -d. -f1)
