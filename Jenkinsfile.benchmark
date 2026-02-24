@@ -175,9 +175,16 @@ def runBenchmark(String cypressVersion) {
             cypress/included:${cypressVersion} \
             npx cypress run --spec 'cypress/e2e/smoke/**'
 
-        # Copy test files into container (use benchmark config without mochawesome)
+        # Copy test files into container
         docker cp \${WORKSPACE}/cypress ${containerName}:/app/cypress
-        docker cp \${WORKSPACE}/cypress.config.benchmark.js ${containerName}:/app/cypress.config.js
+
+        # Cypress 9.x uses cypress.json; 10+ uses cypress.config.js
+        MAJOR=\$(echo "${cypressVersion}" | cut -d. -f1)
+        if [ "\${MAJOR}" -lt 10 ]; then
+            docker cp \${WORKSPACE}/cypress.json ${containerName}:/app/cypress.json
+        else
+            docker cp \${WORKSPACE}/cypress.config.benchmark.js ${containerName}:/app/cypress.config.js
+        fi
 
         # Run the container — capture output with tee on the HOST side
         docker start -a ${containerName} 2>&1 | tee \${WORKSPACE}/${logFile} || true
