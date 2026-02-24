@@ -102,7 +102,12 @@ pipeline {
             steps {
                 sh '''
                     echo "Generating benchmark comparison report..."
-                    node scripts/generate-benchmark-report.js
+                    docker run --rm \
+                        -v ${WORKSPACE}:/app \
+                        -w /app \
+                        --entrypoint="" \
+                        node:20-alpine \
+                        node scripts/generate-benchmark-report.js
                 '''
             }
         }
@@ -175,59 +180,45 @@ def runBenchmark(String cypressVersion) {
 
         echo "Container total time: \${TOTAL_TIME_MS}ms"
 
-        # Extract metrics from mochawesome JSON
-        node -e "
-            const fs = require('fs');
-            const glob = require('child_process').execSync('ls ${versionDir}/*.json 2>/dev/null || true').toString().trim();
-            if (!glob) {
-                console.log('No JSON files found for ${cypressVersion}');
+        # Extract metrics using node inside a container (Jenkins host has no node)
+        docker run --rm \
+            -v \${WORKSPACE}/benchmark-results:/data \
+            --entrypoint="" \
+            node:20-alpine \
+            node -e "
+                const fs = require('fs');
+                const dir = '/data/v${cypressVersion}';
+                let files = [];
+                try { files = fs.readdirSync(dir).filter(f => f.endsWith('.json')).map(f => dir + '/' + f); } catch(e) {}
+
+                let totalDuration = 0, totalTests = 0, totalPasses = 0, totalFailures = 0, totalPending = 0;
+                files.forEach(file => {
+                    try {
+                        const s = JSON.parse(fs.readFileSync(file, 'utf8')).stats || {};
+                        totalDuration += (s.duration || 0);
+                        totalTests += (s.tests || 0);
+                        totalPasses += (s.passes || 0);
+                        totalFailures += (s.failures || 0);
+                        totalPending += (s.pending || 0);
+                    } catch(e) {}
+                });
+
                 const entry = {
                     version: '${cypressVersion}',
-                    duration: 0,
+                    duration: totalDuration,
                     totalTime: \${TOTAL_TIME_MS},
-                    tests: 0,
-                    passes: 0,
-                    failures: 0,
-                    pending: 0,
-                    error: 'No results collected'
+                    tests: totalTests,
+                    passes: totalPasses,
+                    failures: totalFailures,
+                    pending: totalPending
                 };
-                const metrics = JSON.parse(fs.readFileSync('benchmark-results/metrics.json', 'utf8'));
+                if (totalTests === 0) entry.error = 'No results collected';
+
+                console.log('Cypress ${cypressVersion}: ' + (totalDuration/1000).toFixed(1) + 's test time, ' + totalTests + ' tests');
+
+                const metrics = JSON.parse(fs.readFileSync('/data/metrics.json', 'utf8'));
                 metrics.push(entry);
-                fs.writeFileSync('benchmark-results/metrics.json', JSON.stringify(metrics, null, 2));
-                process.exit(0);
-            }
-
-            // Read all JSON files and sum stats
-            const files = glob.split('\\n').filter(f => f.endsWith('.json'));
-            let totalDuration = 0, totalTests = 0, totalPasses = 0, totalFailures = 0, totalPending = 0;
-
-            files.forEach(file => {
-                try {
-                    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-                    const s = data.stats || {};
-                    totalDuration += (s.duration || 0);
-                    totalTests += (s.tests || 0);
-                    totalPasses += (s.passes || 0);
-                    totalFailures += (s.failures || 0);
-                    totalPending += (s.pending || 0);
-                } catch(e) {}
-            });
-
-            const entry = {
-                version: '${cypressVersion}',
-                duration: totalDuration,
-                totalTime: \${TOTAL_TIME_MS},
-                tests: totalTests,
-                passes: totalPasses,
-                failures: totalFailures,
-                pending: totalPending
-            };
-
-            console.log('Cypress ${cypressVersion}: ' + (totalDuration/1000).toFixed(1) + 's test time, ' + totalTests + ' tests');
-
-            const metrics = JSON.parse(fs.readFileSync('benchmark-results/metrics.json', 'utf8'));
-            metrics.push(entry);
-            fs.writeFileSync('benchmark-results/metrics.json', JSON.stringify(metrics, null, 2));
-        "
+                fs.writeFileSync('/data/metrics.json', JSON.stringify(metrics, null, 2));
+            "
     """
 }
