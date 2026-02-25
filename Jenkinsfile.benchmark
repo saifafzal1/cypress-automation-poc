@@ -195,8 +195,14 @@ def runBenchmark(String cypressVersion) {
         echo "0" > \${PEAK_MEM_FILE}
         (
             PEAK=0
+            # Wait up to 30s for container to start running
+            for i in \$(seq 1 60); do
+                STATE=\$(docker inspect --format '{{.State.Running}}' ${containerName} 2>/dev/null) || true
+                [ "\${STATE}" = "true" ] && break
+                sleep 0.5
+            done
+            # Poll memory while container is running
             while true; do
-                # Check if container is running (exits loop once stopped/removed)
                 STATE=\$(docker inspect --format '{{.State.Running}}' ${containerName} 2>/dev/null) || break
                 [ "\${STATE}" != "true" ] && break
                 RAW=\$(docker stats --no-stream --format '{{.MemUsage}}' ${containerName} 2>/dev/null) || true
