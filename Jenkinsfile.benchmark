@@ -195,8 +195,11 @@ def runBenchmark(String cypressVersion) {
         echo "0" > \${PEAK_MEM_FILE}
         (
             PEAK=0
-            while docker inspect ${containerName} >/dev/null 2>&1; do
-                RAW=\$(docker stats --no-stream --format '{{.MemUsage}}' ${containerName} 2>/dev/null)
+            while true; do
+                # Check if container is running (exits loop once stopped/removed)
+                STATE=\$(docker inspect --format '{{.State.Running}}' ${containerName} 2>/dev/null) || break
+                [ "\${STATE}" != "true" ] && break
+                RAW=\$(docker stats --no-stream --format '{{.MemUsage}}' ${containerName} 2>/dev/null) || true
                 VAL=\$(echo "\${RAW}" | grep -oE '^[0-9.]+' | head -1)
                 UNIT=\$(echo "\${RAW}" | grep -oE '[A-Za-z]+' | head -1)
                 case "\${UNIT}" in
@@ -205,8 +208,8 @@ def runBenchmark(String cypressVersion) {
                     *)   MIB=\${VAL} ;;
                 esac
                 MIB_INT=\$(echo "\${MIB}" | cut -d. -f1)
-                [ "\${MIB_INT}" -gt "\${PEAK}" ] 2>/dev/null && PEAK=\${MIB_INT}
-                sleep 2
+                [ -n "\${MIB_INT}" ] && [ "\${MIB_INT}" -gt "\${PEAK}" ] 2>/dev/null && PEAK=\${MIB_INT}
+                sleep 0.5
             done
             echo "\${PEAK}" > \${PEAK_MEM_FILE}
         ) &
@@ -220,13 +223,14 @@ def runBenchmark(String cypressVersion) {
         TOTAL_TIME_MS=\$(( (END_TIME - START_TIME) / 1000000 ))
         echo "Container total time: \${TOTAL_TIME_MS}ms"
 
-        # Cleanup container
-        docker rm -f ${containerName} 2>/dev/null || true
-
-        # Collect peak memory from background sampler
+        # Collect peak memory from background sampler BEFORE removing container
+        # (sampler detects container stopped via State.Running and exits)
         wait \${MEM_PID} 2>/dev/null || true
         PEAK_MEM=\$(cat \${PEAK_MEM_FILE} 2>/dev/null || echo "0")
         echo "Peak memory: \${PEAK_MEM} MiB"
+
+        # Cleanup container after memory is collected
+        docker rm -f ${containerName} 2>/dev/null || true
 
         # Write metric file
         METRIC_FILE=\${WORKSPACE}/benchmark-results/${cypressVersion}.metric
