@@ -167,6 +167,9 @@ def runBenchmark(String cypressVersion) {
         # Record start time
         START_TIME=\$(date +%s%N)
 
+        # Remove any leftover container from a previous run
+        docker rm -f ${containerName} 2>/dev/null || true
+
         # Create container - run benchmark script (handles dependency fixes)
         docker create --name ${containerName} \
             -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
