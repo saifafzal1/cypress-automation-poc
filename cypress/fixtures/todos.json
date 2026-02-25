@@ -1,0 +1,24 @@
+{
+  "singleTodo": "Buy groceries",
+  "multipleTodos": [
+    "Buy groceries",
+    "Clean the house",
+    "Walk the dog"
+  ],
+  "editedTodo": "Buy organic groceries",
+  "bulkTodos": [
+    "Task one",
+    "Task two",
+    "Task three",
+    "Task four",
+    "Task five"
+  ],
+  "edgeCases": {
+    "empty": "",
+    "whitespace": "   ",
+    "longText": "This is a very long todo item that contains a lot of text to test how the application handles lengthy input strings in the todo field",
+    "specialChars": "Todo with <special> & \"chars\" + 'quotes'",
+    "xss": "<script>alert('xss')</script>",
+    "unicode": "Todo with unicode: \u00e9\u00e0\u00fc\u00f1 \u2603 \u2764"
+  }
+}

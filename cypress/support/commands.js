@@ -39,3 +39,12 @@ Cypress.Commands.add('bookAppointment', (appointmentData) => {
 Cypress.Commands.add('waitForApi', (method, url, alias) => {
   cy.intercept(method, url).as(alias)
 })
+
+// ── TodoMVC helpers ──
+Cypress.Commands.add('addTodo', (text) => {
+  cy.get('.new-todo').type(`${text}{enter}`)
+})
+
+Cypress.Commands.add('addMultipleTodos', (todos) => {
+  todos.forEach((todo) => cy.addTodo(todo))
+})
