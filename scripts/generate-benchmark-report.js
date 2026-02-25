@@ -135,6 +135,41 @@ const maxMemory = hasMemoryData ? Math.max(...validMetrics.filter(m => m.peakMem
 const timeSavedSec = (first.totalTime - last.totalTime) / 1000;
 const efficiencyRatio = hasMemoryData && memoryIncrease > 0 ? (timeSavedSec / memoryIncrease).toFixed(2) : null;
 
+// Recommend best version using normalized scoring (lower is better for all raw metrics)
+// Weights: test duration 30%, total time 30%, memory 20%, version recency 20%
+const scoredMetrics = validMetrics.filter(m => m.peakMemoryMB > 0 && m.tests > 0);
+const maxDuration = Math.max(...scoredMetrics.map(m => m.duration));
+const minDuration = Math.min(...scoredMetrics.map(m => m.duration));
+const maxTotal = Math.max(...scoredMetrics.map(m => m.totalTime));
+const minTotal = Math.min(...scoredMetrics.map(m => m.totalTime));
+const maxMem = Math.max(...scoredMetrics.map(m => m.peakMemoryMB));
+const minMem = Math.min(...scoredMetrics.map(m => m.peakMemoryMB));
+const maxIdx = scoredMetrics.length - 1;
+
+function normalize(val, min, max) { return max === min ? 0 : (val - min) / (max - min); }
+
+const scored = scoredMetrics.map((m, i) => {
+  const durScore = normalize(m.duration, minDuration, maxDuration);          // 0 = fastest
+  const totalScore = normalize(m.totalTime, minTotal, maxTotal);             // 0 = fastest
+  const memScore = normalize(m.peakMemoryMB, minMem, maxMem);               // 0 = lightest
+  const recencyScore = 1 - (i / maxIdx);                                     // 0 = newest
+  const composite = durScore * 0.3 + totalScore * 0.3 + memScore * 0.2 + recencyScore * 0.2;
+  return { ...m, composite, durScore, totalScore, memScore, recencyScore };
+});
+scored.sort((a, b) => a.composite - b.composite);
+const recommended = scored[0];
+const runnerUp = scored[1];
+
+// Build recommendation reasons
+const recReasons = [];
+if (recommended.durScore <= 0.3) recReasons.push('fast test execution');
+if (recommended.totalScore <= 0.3) recReasons.push('low total container time');
+if (recommended.memScore <= 0.5) recReasons.push('moderate memory footprint');
+if (recommended.recencyScore <= 0.3) recReasons.push('recent release with active support');
+const recReasonsText = recReasons.length > 0 ? recReasons.join(', ') : 'best overall balance';
+
+console.log(`  Recommended version: v${recommended.version} (score: ${recommended.composite.toFixed(3)})`);
+
 // Chart data
 const labels = validMetrics.map(m => 'v' + m.version);
 const durations = validMetrics.map(m => (m.duration / 1000).toFixed(1));
@@ -150,10 +185,12 @@ const tableRows = allMetrics.map(m => {
   const total = m.totalTime > 0 ? (m.totalTime / 1000).toFixed(1) + 's' : '-';
   const rate = m.tests > 0 ? ((m.passes / m.tests) * 100).toFixed(0) + '%' : '-';
   const mem = m.peakMemoryMB > 0 ? m.peakMemoryMB + ' MiB' : '-';
-  const status = m.error ? '<span style="color:#e74c3c">Error</span>' : '<span style="color:#2ecc71">OK</span>';
+  const isRec = recommended && m.version === recommended.version;
+  const status = m.error ? '<span style="color:#e74c3c">Error</span>' : (isRec ? '<span style="color:#4ade80; font-weight:700;">Recommended</span>' : '<span style="color:#2ecc71">OK</span>');
+  const rowStyle = isRec ? ' style="background: rgba(74, 222, 128, 0.08); border-left: 3px solid #4ade80;"' : '';
   return `
-    <tr>
-      <td><strong>v${m.version}</strong></td>
+    <tr${rowStyle}>
+      <td><strong>v${m.version}</strong>${isRec ? ' <span style="font-size:11px; background:#065f46; color:#4ade80; padding:2px 8px; border-radius:10px; margin-left:6px;">BEST</span>' : ''}</td>
       <td>${dur}</td>
       <td>${total}</td>
       <td>${m.tests || 0}</td>
@@ -204,6 +241,16 @@ const html = `<!DOCTYPE html>
     .roi-item { text-align: center; }
     .roi-value { font-size: 28px; font-weight: 700; color: #4ade80; }
     .roi-label { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+    .rec-section { background: linear-gradient(135deg, #064e3b 0%, #1e293b 100%); border-radius: 12px; padding: 24px; border: 1px solid #4ade80; margin-bottom: 24px; }
+    .rec-title { font-size: 18px; font-weight: 700; color: #4ade80; margin-bottom: 12px; }
+    .rec-version { font-size: 36px; font-weight: 800; color: #4ade80; margin-bottom: 8px; }
+    .rec-reasons { font-size: 14px; color: #94a3b8; line-height: 1.8; }
+    .rec-reasons li { margin-bottom: 4px; }
+    .rec-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 16px; }
+    @media (max-width: 800px) { .rec-stats { grid-template-columns: repeat(2, 1fr); } }
+    .rec-stat { text-align: center; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; }
+    .rec-stat-value { font-size: 22px; font-weight: 700; color: #f1f5f9; }
+    .rec-stat-label { font-size: 11px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
     .footer { text-align: center; margin-top: 32px; color: #475569; font-size: 12px; }
   </style>
 </head>
@@ -224,10 +271,10 @@ const html = `<!DOCTYPE html>
         <div class="card-value blue">${totalTimeImprovement}%</div>
         <div class="card-detail">Including startup + npm install</div>
       </div>
-      <div class="card">
-        <div class="card-label">Fastest Version</div>
-        <div class="card-value amber">v${last.version}</div>
-        <div class="card-detail">${(last.duration/1000).toFixed(1)}s test duration</div>
+      <div class="card" style="border-color: #4ade80;">
+        <div class="card-label">Recommended Version</div>
+        <div class="card-value green">v${recommended.version}</div>
+        <div class="card-detail">Best balance of speed, memory &amp; support</div>
       </div>
       <div class="card">
         <div class="card-label">Memory Tradeoff</div>
@@ -286,6 +333,40 @@ const html = `<!DOCTYPE html>
       </table>
     </div>
 
+    <!-- Recommendation -->
+    <div class="rec-section">
+      <div class="rec-title">Upgrade Recommendation</div>
+      <div class="rec-version">Cypress v${recommended.version}</div>
+      <div class="rec-reasons">
+        <p style="margin-bottom: 8px;">Selected for: <strong>${recReasonsText}</strong></p>
+        <ul style="padding-left: 20px;">
+          <li>Test duration: <strong>${(recommended.duration/1000).toFixed(1)}s</strong> (vs ${(first.duration/1000).toFixed(1)}s on v${first.version})</li>
+          <li>Total container time: <strong>${(recommended.totalTime/1000).toFixed(1)}s</strong> (vs ${(first.totalTime/1000).toFixed(1)}s on v${first.version})</li>
+          <li>Peak memory: <strong>${recommended.peakMemoryMB} MiB</strong> (${recommended.peakMemoryMB <= first.peakMemoryMB ? 'no increase' : '+' + (recommended.peakMemoryMB - first.peakMemoryMB) + ' MiB'} vs v${first.version})</li>
+          <li>Runner-up: <strong>v${runnerUp.version}</strong> (score ${runnerUp.composite.toFixed(3)} vs ${recommended.composite.toFixed(3)})</li>
+        </ul>
+        <p style="margin-top: 12px; color: #64748b; font-size: 12px;">Score based on: test duration (30%), total time (30%), memory usage (20%), version recency (20%). Lower composite score = better overall fit.</p>
+      </div>
+      <div class="rec-stats">
+        <div class="rec-stat">
+          <div class="rec-stat-value">${(recommended.duration/1000).toFixed(1)}s</div>
+          <div class="rec-stat-label">Test Duration</div>
+        </div>
+        <div class="rec-stat">
+          <div class="rec-stat-value">${(recommended.totalTime/1000).toFixed(1)}s</div>
+          <div class="rec-stat-label">Total Time</div>
+        </div>
+        <div class="rec-stat">
+          <div class="rec-stat-value">${recommended.peakMemoryMB} MiB</div>
+          <div class="rec-stat-label">Peak Memory</div>
+        </div>
+        <div class="rec-stat">
+          <div class="rec-stat-value">${recommended.tests > 0 ? ((recommended.passes / recommended.tests) * 100).toFixed(0) : 0}%</div>
+          <div class="rec-stat-label">Pass Rate</div>
+        </div>
+      </div>
+    </div>
+
     <!-- ROI Analysis -->
     <div class="roi-section">
       <div class="roi-title">ROI Analysis: Upgrade Impact</div>
@@ -320,6 +401,7 @@ const html = `<!DOCTYPE html>
     const durations = ${JSON.stringify(durations)};
     const totalTimes = ${JSON.stringify(totalTimes)};
     const peakMemories = ${JSON.stringify(peakMemories)};
+    const recommendedLabel = 'v${recommended.version}';
 
     // Duration Bar Chart
     new Chart(document.getElementById('durationChart'), {
@@ -330,6 +412,7 @@ const html = `<!DOCTYPE html>
           label: 'Test Duration (s)',
           data: durations,
           backgroundColor: durations.map((_, i) => {
+            if (labels[i] === recommendedLabel) return 'rgba(74, 222, 128, 0.9)';
             const ratio = i / (durations.length - 1);
             return \`rgba(\${Math.round(239 - ratio * 165)}, \${Math.round(68 + ratio * 105)}, \${Math.round(68 + ratio * 60)}, 0.85)\`;
           }),
@@ -356,6 +439,7 @@ const html = `<!DOCTYPE html>
           label: 'Peak Memory (MiB)',
           data: peakMemories,
           backgroundColor: peakMemories.map((_, i) => {
+            if (labels[i] === recommendedLabel) return 'rgba(74, 222, 128, 0.9)';
             const ratio = i / (peakMemories.length - 1 || 1);
             return \`rgba(\${Math.round(167 - ratio * 40)}, \${Math.round(139 - ratio * 20)}, \${Math.round(250)}, 0.85)\`;
           }),
@@ -385,8 +469,8 @@ const html = `<!DOCTYPE html>
           backgroundColor: 'rgba(96, 165, 250, 0.1)',
           fill: true,
           tension: 0.3,
-          pointRadius: 6,
-          pointBackgroundColor: '#60a5fa'
+          pointRadius: labels.map(l => l === recommendedLabel ? 10 : 6),
+          pointBackgroundColor: labels.map(l => l === recommendedLabel ? '#4ade80' : '#60a5fa')
         }]
       },
       options: {
@@ -419,4 +503,5 @@ if (hasMemoryData) {
   console.log(`  Memory tradeoff: ${memFirst.peakMemoryMB}MB -> ${memLast.peakMemoryMB}MB (+${memoryChangePct}%)`);
   if (efficiencyRatio) console.log(`  Cost efficiency: ${efficiencyRatio}s saved per MB added`);
 }
+console.log(`  Recommended: v${recommended.version} (${recReasonsText})`);
 console.log('========================================');
