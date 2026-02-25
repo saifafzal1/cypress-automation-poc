@@ -83,6 +83,8 @@ const metrics = metricFiles.map(file => {
     }
   }
 
+  const peakMemoryMB = parseInt(props.peakMemoryMB) || 0;
+
   const entry = {
     version,
     duration,
@@ -90,12 +92,13 @@ const metrics = metricFiles.map(file => {
     tests,
     passes,
     failures,
-    pending: 0
+    pending: 0,
+    peakMemoryMB
   };
 
   if (tests === 0) entry.error = 'No results collected';
 
-  console.log(`  ${version}: ${(duration/1000).toFixed(1)}s test time, ${tests} tests (${passes} passed, ${failures} failed), ${(totalTime/1000).toFixed(1)}s total`);
+  console.log(`  ${version}: ${(duration/1000).toFixed(1)}s test time, ${tests} tests (${passes} passed, ${failures} failed), ${(totalTime/1000).toFixed(1)}s total, ${peakMemoryMB}MB peak mem`);
 
   return entry;
 });
@@ -121,10 +124,17 @@ const timeSavedPerRun = ((first.totalTime - last.totalTime) / 1000).toFixed(1);
 const dailySavings = (timeSavedPerRun * 10 / 60).toFixed(1);
 const annualSavings = (dailySavings * 260 / 60).toFixed(0);
 
+// Memory improvement
+const memFirst = validMetrics.find(m => m.peakMemoryMB > 0);
+const memLast = [...validMetrics].reverse().find(m => m.peakMemoryMB > 0);
+const hasMemoryData = memFirst && memLast && memFirst.peakMemoryMB > 0;
+const memoryChange = hasMemoryData ? ((1 - memLast.peakMemoryMB / memFirst.peakMemoryMB) * 100).toFixed(1) : '0';
+
 // Chart data
 const labels = validMetrics.map(m => 'v' + m.version);
 const durations = validMetrics.map(m => (m.duration / 1000).toFixed(1));
 const totalTimes = validMetrics.map(m => (m.totalTime / 1000).toFixed(1));
+const peakMemories = validMetrics.map(m => m.peakMemoryMB);
 
 // Generate date string
 const now = new Date().toISOString().split('T')[0];
@@ -134,6 +144,7 @@ const tableRows = allMetrics.map(m => {
   const dur = m.duration > 0 ? (m.duration / 1000).toFixed(1) + 's' : '-';
   const total = m.totalTime > 0 ? (m.totalTime / 1000).toFixed(1) + 's' : '-';
   const rate = m.tests > 0 ? ((m.passes / m.tests) * 100).toFixed(0) + '%' : '-';
+  const mem = m.peakMemoryMB > 0 ? m.peakMemoryMB + ' MiB' : '-';
   const status = m.error ? '<span style="color:#e74c3c">Error</span>' : '<span style="color:#2ecc71">OK</span>';
   return `
     <tr>
@@ -144,6 +155,7 @@ const tableRows = allMetrics.map(m => {
       <td>${m.passes || 0}</td>
       <td>${m.failures || 0}</td>
       <td>${rate}</td>
+      <td>${mem}</td>
       <td>${status}</td>
     </tr>`;
 }).join('\n');
@@ -169,6 +181,7 @@ const html = `<!DOCTYPE html>
     .card-value.blue { color: #60a5fa; }
     .card-value.amber { color: #fbbf24; }
     .card-value.red { color: #f87171; }
+    .card-value.purple { color: #a78bfa; }
     .card-detail { font-size: 12px; color: #64748b; margin-top: 4px; }
     .chart-section { background: #1e293b; border-radius: 12px; padding: 24px; border: 1px solid #334155; margin-bottom: 24px; }
     .chart-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #f1f5f9; }
@@ -211,6 +224,11 @@ const html = `<!DOCTYPE html>
         <div class="card-detail">${(last.duration/1000).toFixed(1)}s test duration</div>
       </div>
       <div class="card">
+        <div class="card-label">Peak Memory</div>
+        <div class="card-value ${hasMemoryData ? 'purple' : 'blue'}">${hasMemoryData ? memLast.peakMemoryMB + ' MiB' : 'N/A'}</div>
+        <div class="card-detail">${hasMemoryData ? memFirst.peakMemoryMB + ' → ' + memLast.peakMemoryMB + ' MiB (' + memoryChange + '%)' : 'No memory data collected'}</div>
+      </div>
+      <div class="card">
         <div class="card-label">Versions Tested</div>
         <div class="card-value blue">${validMetrics.length}</div>
         <div class="card-detail">Stable releases benchmarked</div>
@@ -228,6 +246,10 @@ const html = `<!DOCTYPE html>
         <canvas id="totalTimeChart"></canvas>
       </div>
     </div>
+    <div class="chart-section" style="margin-bottom: 24px;">
+      <div class="chart-title">Peak Memory Usage by Version</div>
+      <canvas id="memoryChart"></canvas>
+    </div>
 
     <!-- Comparison Table -->
     <div class="chart-section">
@@ -242,6 +264,7 @@ const html = `<!DOCTYPE html>
             <th>Passed</th>
             <th>Failed</th>
             <th>Pass Rate</th>
+            <th>Peak Memory</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -279,6 +302,7 @@ const html = `<!DOCTYPE html>
     const labels = ${JSON.stringify(labels)};
     const durations = ${JSON.stringify(durations)};
     const totalTimes = ${JSON.stringify(totalTimes)};
+    const peakMemories = ${JSON.stringify(peakMemories)};
 
     // Duration Bar Chart
     new Chart(document.getElementById('durationChart'), {
@@ -291,6 +315,32 @@ const html = `<!DOCTYPE html>
           backgroundColor: durations.map((_, i) => {
             const ratio = i / (durations.length - 1);
             return \`rgba(\${Math.round(239 - ratio * 165)}, \${Math.round(68 + ratio * 105)}, \${Math.round(68 + ratio * 60)}, 0.85)\`;
+          }),
+          borderRadius: 6,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+          x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+        }
+      }
+    });
+
+    // Peak Memory Bar Chart
+    new Chart(document.getElementById('memoryChart'), {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Peak Memory (MiB)',
+          data: peakMemories,
+          backgroundColor: peakMemories.map((_, i) => {
+            const ratio = i / (peakMemories.length - 1 || 1);
+            return \`rgba(\${Math.round(167 - ratio * 40)}, \${Math.round(139 - ratio * 20)}, \${Math.round(250)}, 0.85)\`;
           }),
           borderRadius: 6,
           borderSkipped: false
@@ -348,4 +398,7 @@ console.log(`  File: ${OUTPUT_FILE}`);
 console.log(`  Versions: ${validMetrics.length} benchmarked`);
 console.log(`  Duration improvement: ${durationImprovement}% (v${first.version} -> v${last.version})`);
 console.log(`  Time saved per run: ${timeSavedPerRun}s`);
+if (hasMemoryData) {
+  console.log(`  Memory: ${memFirst.peakMemoryMB}MB -> ${memLast.peakMemoryMB}MB (${memoryChange}%)`);
+}
 console.log('========================================');

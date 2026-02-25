@@ -190,6 +190,28 @@ def runBenchmark(String cypressVersion) {
             docker cp \${WORKSPACE}/cypress.config.benchmark.js ${containerName}:/app/cypress.config.js
         fi
 
+        # Start background memory sampler
+        PEAK_MEM_FILE=\${WORKSPACE}/benchmark-results/${cypressVersion}.peakmem
+        echo "0" > \${PEAK_MEM_FILE}
+        (
+            PEAK=0
+            while docker inspect ${containerName} >/dev/null 2>&1; do
+                RAW=\$(docker stats --no-stream --format '{{.MemUsage}}' ${containerName} 2>/dev/null)
+                VAL=\$(echo "\${RAW}" | grep -oE '^[0-9.]+' | head -1)
+                UNIT=\$(echo "\${RAW}" | grep -oE '[A-Za-z]+' | head -1)
+                case "\${UNIT}" in
+                    GiB) MIB=\$(echo "\${VAL} * 1024" | bc) ;;
+                    KiB) MIB=\$(echo "\${VAL} / 1024" | bc) ;;
+                    *)   MIB=\${VAL} ;;
+                esac
+                MIB_INT=\$(echo "\${MIB}" | cut -d. -f1)
+                [ "\${MIB_INT}" -gt "\${PEAK}" ] 2>/dev/null && PEAK=\${MIB_INT}
+                sleep 2
+            done
+            echo "\${PEAK}" > \${PEAK_MEM_FILE}
+        ) &
+        MEM_PID=\$!
+
         # Run the container — capture output with tee on the HOST side
         docker start -a ${containerName} 2>&1 | tee \${WORKSPACE}/${logFile} || true
 
@@ -200,6 +222,11 @@ def runBenchmark(String cypressVersion) {
 
         # Cleanup container
         docker rm -f ${containerName} 2>/dev/null || true
+
+        # Collect peak memory from background sampler
+        wait \${MEM_PID} 2>/dev/null || true
+        PEAK_MEM=\$(cat \${PEAK_MEM_FILE} 2>/dev/null || echo "0")
+        echo "Peak memory: \${PEAK_MEM} MiB"
 
         # Write metric file
         METRIC_FILE=\${WORKSPACE}/benchmark-results/${cypressVersion}.metric
@@ -254,6 +281,7 @@ def runBenchmark(String cypressVersion) {
         echo "passes=\${PASSES}" >> \${METRIC_FILE}
         echo "failures=\${FAILURES}" >> \${METRIC_FILE}
         echo "duration=\${DURATION_MS}" >> \${METRIC_FILE}
+        echo "peakMemoryMB=\${PEAK_MEM}" >> \${METRIC_FILE}
 
         echo "--- Metric ---"
         cat \${METRIC_FILE}
