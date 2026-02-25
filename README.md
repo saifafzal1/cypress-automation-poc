@@ -81,6 +81,8 @@ Developer → Git Push → GitHub
 │   ├── generate-report.sh         # Report merge + generation helper
 │   ├── slack-notification.sh      # Slack notification script
 │   └── email-notification.html    # Email template
+├── setup.sh                       # One-command setup (macOS/Linux)
+├── setup.bat                      # One-command setup (Windows)
 ├── cypress.config.js
 ├── Dockerfile                     # cypress/included:15.3.0
 ├── docker-compose.yml             # Cypress + 5 parallel runners
@@ -96,12 +98,41 @@ Developer → Git Push → GitHub
 
 ## Quick Start
 
-### Prerequisites
+### One-Command Setup (Recommended)
+
+The fastest way to get Jenkins + all pipelines running. Only **Docker** and **Git** are required — no Node.js needed on the host.
+
+**macOS / Linux:**
+```bash
+./setup.sh
+```
+
+**Windows:**
+```cmd
+setup.bat
+```
+
+The script will:
+1. Check prerequisites (Git, Docker, Docker Compose)
+2. Clone the repository (if not already cloned)
+3. Build and start Jenkins via Docker Compose
+4. Poll until Jenkins is ready (up to 3 minutes)
+5. Open `http://localhost:8080` in your browser
+
+**Credentials:** `admin` / `admin123`
+
+**Pre-configured jobs** appear under the `Cypress-Tests` folder:
+- `Cypress-Tests/Smoke-Tests`
+- `Cypress-Tests/Regression-Tests`
+- `Cypress-Tests/Docker-Pipeline`
+- `Cypress-Tests/Version-Benchmark`
+
+### Prerequisites (manual setup)
 - Node.js 20+ (via nvm)
 - Docker Desktop
 - Git
 
-### Local Setup
+### Local Setup (manual)
 ```bash
 # Clone the repo
 git clone https://github.com/saifafzal1/cypress-automation-poc.git
@@ -188,10 +219,10 @@ Each page object encapsulates:
 
 | Job | Trigger | Duration | Purpose |
 |---|---|---|---|
-| `Cypress-Parallel-Regression` | Webhook (merge to main) | ~7 min | Auto-trigger parallel regression |
-| `Cypress-Nightly` | Cron (midnight) | ~7 min | Full parallel regression daily |
-| `Cypress-Parameterized` | Manual | Varies | Pick env / browser / suite / parallel |
-| `Cypress-Docker-Pipeline` | Manual | Varies | Fully Docker-based execution |
+| `Cypress-Tests/Smoke-Tests` | Manual / Webhook | ~2 min | Quick smoke validation |
+| `Cypress-Tests/Regression-Tests` | Webhook (merge to main) | ~7 min | Parallel regression across 5 suites |
+| `Cypress-Tests/Docker-Pipeline` | Manual | Varies | Fully Docker-based execution |
+| `Cypress-Tests/Version-Benchmark` | Manual | Varies | Cypress version comparison benchmarks |
 
 ---
 
@@ -234,7 +265,9 @@ Checkout → Install → ┌─ Auth Tests (4 min) ─────────�
 
 ## Jenkins Setup
 
-See [jenkins-setup-guide.md](jenkins-setup-guide.md) for complete instructions:
+**Automated:** Run `./setup.sh` (macOS/Linux) or `setup.bat` (Windows) — this handles everything including Docker build, Jenkins readiness polling, and pre-configured jobs via JCasC.
+
+**Manual / Customization:** See [jenkins-setup-guide.md](jenkins-setup-guide.md) for step-by-step instructions:
 1. Install Jenkins via Docker
 2. Install required plugins
 3. Configure Node.js 20 tool
