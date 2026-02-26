@@ -301,8 +301,10 @@ def runBenchmark(String cypressVersion) {
             if [ -n "\${SUMMARY}" ]; then
                 DUR_STR=\$(echo "\${SUMMARY}" | grep -oE '[0-9]+:[0-9]+' | tail -1) || true
                 if [ -n "\${DUR_STR}" ]; then
-                    MINS=\$(echo "\${DUR_STR}" | cut -d: -f1)
-                    SECS=\$(echo "\${DUR_STR}" | cut -d: -f2)
+                    # Use awk to strip leading zeros before arithmetic — avoids
+                    # "Illegal number: 09" in POSIX sh (09 is invalid octal)
+                    MINS=\$(echo "\${DUR_STR}" | cut -d: -f1 | awk '{printf "%d", \$1}')
+                    SECS=\$(echo "\${DUR_STR}" | cut -d: -f2 | awk '{printf "%d", \$1}')
                     DURATION_MS=\$(( (MINS * 60 + SECS) * 1000 ))
                 fi
             fi
