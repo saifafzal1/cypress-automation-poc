@@ -30,73 +30,78 @@ pipeline {
             }
         }
 
-        // ── Benchmark Stages: One per Cypress version ──
+        // ── Stage 3: Benchmark All Versions (Parallel) ──
+        stage('Benchmark All Versions') {
+            parallel {
 
-        stage('Cypress 9.7.0') {
-            steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                    runBenchmark('9.7.0')
+                stage('Cypress 9.7.0') {
+                    steps {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                            runBenchmark('9.7.0')
+                        }
+                    }
                 }
-            }
+
+                stage('Cypress 10.0.0') {
+                    steps {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                            runBenchmark('10.0.0')
+                        }
+                    }
+                }
+
+                stage('Cypress 11.0.0') {
+                    steps {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                            runBenchmark('11.0.0')
+                        }
+                    }
+                }
+
+                stage('Cypress 12.0.0') {
+                    steps {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                            runBenchmark('12.0.0')
+                        }
+                    }
+                }
+
+                stage('Cypress 13.0.0') {
+                    steps {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                            runBenchmark('13.0.0')
+                        }
+                    }
+                }
+
+                stage('Cypress 13.6.6') {
+                    steps {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                            runBenchmark('13.6.6')
+                        }
+                    }
+                }
+
+                stage('Cypress 14.0.0') {
+                    steps {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                            runBenchmark('14.0.0')
+                        }
+                    }
+                }
+
+                stage('Cypress 15.3.0') {
+                    steps {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                            runBenchmark('15.3.0')
+                        }
+                    }
+                }
+
+            } // end parallel
         }
 
-        stage('Cypress 10.0.0') {
-            steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                    runBenchmark('10.0.0')
-                }
-            }
-        }
-
-        stage('Cypress 11.0.0') {
-            steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                    runBenchmark('11.0.0')
-                }
-            }
-        }
-
-        stage('Cypress 12.0.0') {
-            steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                    runBenchmark('12.0.0')
-                }
-            }
-        }
-
-        stage('Cypress 13.0.0') {
-            steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                    runBenchmark('13.0.0')
-                }
-            }
-        }
-
-        stage('Cypress 13.6.6') {
-            steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                    runBenchmark('13.6.6')
-                }
-            }
-        }
-
-        stage('Cypress 14.0.0') {
-            steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                    runBenchmark('14.0.0')
-                }
-            }
-        }
-
-        stage('Cypress 15.3.0') {
-            steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                    runBenchmark('15.3.0')
-                }
-            }
-        }
-
-        // ── Generate Benchmark Report ──
+        // ── Stage 4: Generate Benchmark Report ──
         stage('Generate Report') {
             steps {
                 sh '''
@@ -123,7 +128,7 @@ pipeline {
             }
         }
 
-        // ── Publish Report ──
+        // ── Stage 5: Publish Report ──
         stage('Publish Report') {
             steps {
                 publishHTML(target: [
