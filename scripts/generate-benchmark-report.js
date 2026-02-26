@@ -42,6 +42,7 @@ const metrics = metricFiles.map(file => {
 
   const version = props.version || file.replace('.metric', '');
   const totalTime = parseInt(props.totalTime) || 0;
+  const metricError = props.error || null; // e.g. IMAGE_NOT_FOUND written by Jenkinsfile
   let tests = 0, passes = 0, failures = 0, duration = 0;
 
   // Try to parse the Cypress log file for detailed results
@@ -96,7 +97,13 @@ const metrics = metricFiles.map(file => {
     peakMemoryMB
   };
 
-  if (tests === 0) entry.error = 'No results collected';
+  if (metricError) {
+    entry.error = metricError === 'IMAGE_NOT_FOUND'
+      ? 'Docker image not available'
+      : metricError;
+  } else if (tests === 0) {
+    entry.error = 'No specs collected';
+  }
 
   console.log(`  ${version}: ${(duration/1000).toFixed(1)}s test time, ${tests} tests (${passes} passed, ${failures} failed), ${(totalTime/1000).toFixed(1)}s total, ${peakMemoryMB}MB peak mem`);
 
@@ -137,13 +144,14 @@ const efficiencyRatio = hasMemoryData && memoryIncrease > 0 ? (timeSavedSec / me
 
 // Recommend best version using normalized scoring (lower is better for all raw metrics)
 // Weights: test duration 30%, total time 30%, memory 20%, version recency 20%
-const scoredMetrics = validMetrics.filter(m => m.peakMemoryMB > 0 && m.tests > 0);
-const maxDuration = Math.max(...scoredMetrics.map(m => m.duration));
-const minDuration = Math.min(...scoredMetrics.map(m => m.duration));
-const maxTotal = Math.max(...scoredMetrics.map(m => m.totalTime));
-const minTotal = Math.min(...scoredMetrics.map(m => m.totalTime));
-const maxMem = Math.max(...scoredMetrics.map(m => m.peakMemoryMB));
-const minMem = Math.min(...scoredMetrics.map(m => m.peakMemoryMB));
+// Require tests > 0; memory data is optional — if absent, memScore defaults to 0
+const scoredMetrics = validMetrics.filter(m => m.tests > 0);
+const maxDuration = scoredMetrics.length ? Math.max(...scoredMetrics.map(m => m.duration)) : 0;
+const minDuration = scoredMetrics.length ? Math.min(...scoredMetrics.map(m => m.duration)) : 0;
+const maxTotal = scoredMetrics.length ? Math.max(...scoredMetrics.map(m => m.totalTime)) : 0;
+const minTotal = scoredMetrics.length ? Math.min(...scoredMetrics.map(m => m.totalTime)) : 0;
+const maxMem = scoredMetrics.length ? Math.max(...scoredMetrics.map(m => m.peakMemoryMB)) : 0;
+const minMem = scoredMetrics.length ? Math.min(...scoredMetrics.map(m => m.peakMemoryMB)) : 0;
 const maxIdx = scoredMetrics.length - 1;
 
 function normalize(val, min, max) { return max === min ? 0 : (val - min) / (max - min); }
@@ -151,14 +159,19 @@ function normalize(val, min, max) { return max === min ? 0 : (val - min) / (max 
 const scored = scoredMetrics.map((m, i) => {
   const durScore = normalize(m.duration, minDuration, maxDuration);          // 0 = fastest
   const totalScore = normalize(m.totalTime, minTotal, maxTotal);             // 0 = fastest
-  const memScore = normalize(m.peakMemoryMB, minMem, maxMem);               // 0 = lightest
-  const recencyScore = 1 - (i / maxIdx);                                     // 0 = newest
+  const memScore = m.peakMemoryMB > 0 ? normalize(m.peakMemoryMB, minMem, maxMem) : 0; // 0 = lightest (skip if no data)
+  const recencyScore = maxIdx > 0 ? 1 - (i / maxIdx) : 0;                   // 0 = newest
   const composite = durScore * 0.3 + totalScore * 0.3 + memScore * 0.2 + recencyScore * 0.2;
   return { ...m, composite, durScore, totalScore, memScore, recencyScore };
 });
 scored.sort((a, b) => a.composite - b.composite);
 const recommended = scored[0];
-const runnerUp = scored[1];
+const runnerUp = scored[1] || scored[0];
+
+if (!recommended) {
+  console.error('No scoreable versions found (all had 0 tests). Cannot generate recommendation.');
+  process.exit(1);
+}
 
 // Build recommendation reasons
 const recReasons = [];
@@ -186,7 +199,9 @@ const tableRows = allMetrics.map(m => {
   const rate = m.tests > 0 ? ((m.passes / m.tests) * 100).toFixed(0) + '%' : '-';
   const mem = m.peakMemoryMB > 0 ? m.peakMemoryMB + ' MiB' : '-';
   const isRec = recommended && m.version === recommended.version;
-  const status = m.error ? '<span style="color:#e74c3c">Error</span>' : (isRec ? '<span style="color:#4ade80; font-weight:700;">Recommended</span>' : '<span style="color:#2ecc71">OK</span>');
+  const status = m.error
+    ? `<span style="color:#e74c3c" title="${m.error}">Error</span> <span style="font-size:11px;color:#94a3b8;">${m.error}</span>`
+    : (isRec ? '<span style="color:#4ade80; font-weight:700;">Recommended</span>' : '<span style="color:#2ecc71">OK</span>');
   const rowStyle = isRec ? ' style="background: rgba(74, 222, 128, 0.08); border-left: 3px solid #4ade80;"' : '';
   return `
     <tr${rowStyle}>

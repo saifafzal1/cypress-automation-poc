@@ -175,6 +175,25 @@ def runBenchmark(String cypressVersion) {
         # Remove any leftover container from a previous run
         docker rm -f ${containerName} 2>/dev/null || true
 
+        # Pull image first — fail fast with a clear message if the image doesn't exist
+        echo "Pulling cypress/included:${cypressVersion}..."
+        if ! docker pull cypress/included:${cypressVersion}; then
+            echo "ERROR: Image cypress/included:${cypressVersion} not available on Docker Hub."
+            echo "Skipping benchmark for this version."
+            END_TIME=\$(date +%s%N)
+            TOTAL_TIME_MS=\$(( (END_TIME - START_TIME) / 1000000 ))
+            METRIC_FILE=\${WORKSPACE}/benchmark-results/${cypressVersion}.metric
+            echo "version=${cypressVersion}" > \${METRIC_FILE}
+            echo "totalTime=\${TOTAL_TIME_MS}" >> \${METRIC_FILE}
+            echo "tests=0" >> \${METRIC_FILE}
+            echo "passes=0" >> \${METRIC_FILE}
+            echo "failures=0" >> \${METRIC_FILE}
+            echo "duration=0" >> \${METRIC_FILE}
+            echo "peakMemoryMB=0" >> \${METRIC_FILE}
+            echo "error=IMAGE_NOT_FOUND" >> \${METRIC_FILE}
+            exit 1
+        fi
+
         # Create container - run benchmark script (handles dependency fixes)
         docker create --name ${containerName} \
             -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
