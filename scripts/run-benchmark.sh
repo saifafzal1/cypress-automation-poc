@@ -15,5 +15,5 @@ if [ -n "${CYPRESS_VERSION}" ] && [ -d "/app/node_modules/@babel/runtime" ]; the
     cp -r /app/node_modules/@babel/runtime "${CYPRESS_BABEL}" 2>/dev/null || true
 fi
 
-# Run Cypress
-npx cypress run --spec 'cypress/e2e/smoke/**'
+# Run Cypress — all tests for full benchmark metrics
+npx cypress run --spec 'cypress/e2e/**'
