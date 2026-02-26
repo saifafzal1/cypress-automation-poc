@@ -73,7 +73,7 @@ pipeline {
             }
         }
 
-        // ── Stage 4b: Parallel Regression (5 Docker containers) ──
+        // ── Stage 4b: Parallel Regression (6 Docker containers) ──
         stage('Run Parallel Regression') {
             when {
                 expression { params.SUITE == 'regression' && params.PARALLEL }
@@ -154,6 +154,22 @@ pipeline {
                                 -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
                                 cypress-tests \
                                 sh -c "npx cypress run --spec 'cypress/e2e/regression/api-validation/**' \
+                                    --reporter mochawesome \
+                                    --reporter-options reportDir=mochawesome-temp,overwrite=false,html=false,json=true"
+                        """
+                    }
+                }
+
+                stage('TodoMVC') {
+                    steps {
+                        sh """
+                            docker run --rm \
+                                -v \${WORKSPACE}/mochawesome-temp/todo:/app/mochawesome-temp \
+                                -v \${WORKSPACE}/cypress/screenshots/todo:/app/cypress/screenshots \
+                                -v \${WORKSPACE}/cypress/videos/todo:/app/cypress/videos \
+                                -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
+                                cypress-tests \
+                                sh -c "npx cypress run --spec 'cypress/e2e/todo-app/**' \
                                     --reporter mochawesome \
                                     --reporter-options reportDir=mochawesome-temp,overwrite=false,html=false,json=true"
                         """

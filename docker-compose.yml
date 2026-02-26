@@ -125,6 +125,24 @@ services:
     profiles:
       - parallel
 
+  cypress-todo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - CYPRESS_BASE_URL=https://katalon-demo-cura.herokuapp.com
+    command: >
+      sh -c "npx cypress run --spec 'cypress/e2e/todo-app/**'
+      && npx mochawesome-merge mochawesome-temp/*.json -o mochawesome-report/todo-merged.json
+      && npx marge mochawesome-report/todo-merged.json -f todo-report -o mochawesome-report"
+    volumes:
+      - ./mochawesome-report:/app/mochawesome-report
+      - ./mochawesome-temp/todo:/app/mochawesome-temp
+      - ./cypress/videos/todo:/app/cypress/videos
+      - ./cypress/screenshots/todo:/app/cypress/screenshots
+    profiles:
+      - parallel
+
 volumes:
   jenkins_home:
     driver: local

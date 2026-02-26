@@ -105,7 +105,7 @@ pipeline {
                     }
                 }
 
-                // ── 3c: Regression — Parallel (5 sub-suites) ──
+                // ── 3c: Regression — Parallel (6 sub-suites) ──
                 stage('Regression (Parallel)') {
                     when {
                         expression { params.SUITE == 'regression' && params.PARALLEL }
@@ -232,6 +232,30 @@ pipeline {
                             }
                         }
 
+                        stage('TodoMVC Tests') {
+                            agent {
+                                docker {
+                                    image 'cypress/included:15.3.0'
+                                    args '--entrypoint='
+                                }
+                            }
+                            steps {
+                                sh 'npm ci'
+                                sh """
+                                    npx cypress run \
+                                        --browser ${params.BROWSER} \
+                                        --spec 'cypress/e2e/todo-app/**' \
+                                        --reporter mochawesome \
+                                        --reporter-options reportDir=mochawesome-temp/todo,overwrite=false,html=false,json=true
+                                """
+                            }
+                            post {
+                                always {
+                                    stash name: 'todo-results', includes: 'mochawesome-temp/todo/**,cypress/screenshots/**,cypress/videos/**', allowEmpty: true
+                                }
+                            }
+                        }
+
                     } // end parallel
                 } // end Regression (Parallel)
 
@@ -249,6 +273,7 @@ pipeline {
                 unstash 'confirmation-results'
                 unstash 'history-results'
                 unstash 'api-results'
+                unstash 'todo-results'
             }
         }
 
