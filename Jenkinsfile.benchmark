@@ -178,6 +178,7 @@ def runBenchmark(String cypressVersion) {
         # Create container - run benchmark script (handles dependency fixes)
         docker create --name ${containerName} \
             -e CYPRESS_BASE_URL=${CYPRESS_BASE_URL} \
+            -e CYPRESS_VERIFY_TIMEOUT=120000 \
             -w /app \
             --entrypoint="" \
             cypress/included:${cypressVersion} \

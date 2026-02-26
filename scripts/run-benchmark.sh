@@ -1,6 +1,10 @@
 #!/bin/sh
 # Benchmark runner script — fixes missing dependencies, then runs Cypress
 
+# Increase verification timeout for parallel runs (default 30s is too short
+# when multiple containers compete for CPU/memory during Cypress startup)
+export CYPRESS_VERIFY_TIMEOUT=120000
+
 # Fix for Cypress 11.x: broken/incomplete bundled @babel/runtime
 # 1. Install @babel/runtime in the project directory
 # 2. Copy it into Cypress's bundled node_modules (where babel-loader resolves from)
