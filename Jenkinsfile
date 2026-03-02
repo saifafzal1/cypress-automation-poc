@@ -57,6 +57,7 @@ pipeline {
                         }
                     }
                     steps {
+                        sh 'rm -rf mochawesome-temp && mkdir -p mochawesome-temp'
                         sh 'npm ci'
                         script {
                             def specPath = ''
@@ -80,6 +81,11 @@ pipeline {
                             """
                         }
                     }
+                    post {
+                        always {
+                            stash name: 'suite-results', includes: 'mochawesome-temp/**', allowEmpty: true
+                        }
+                    }
                 }
 
                 // ── 3b: Regression — Sequential ──
@@ -94,6 +100,7 @@ pipeline {
                         }
                     }
                     steps {
+                        sh 'rm -rf mochawesome-temp && mkdir -p mochawesome-temp'
                         sh 'npm ci'
                         sh """
                             npx cypress run \
@@ -102,6 +109,11 @@ pipeline {
                                 --reporter mochawesome \
                                 --reporter-options reportDir=mochawesome-temp,overwrite=false,html=false,json=true
                         """
+                    }
+                    post {
+                        always {
+                            stash name: 'suite-results', includes: 'mochawesome-temp/**', allowEmpty: true
+                        }
                     }
                 }
 
@@ -120,6 +132,7 @@ pipeline {
                                 }
                             }
                             steps {
+                                sh 'rm -rf mochawesome-temp/auth && mkdir -p mochawesome-temp/auth'
                                 sh 'npm ci'
                                 sh """
                                     npx cypress run \
@@ -144,6 +157,7 @@ pipeline {
                                 }
                             }
                             steps {
+                                sh 'rm -rf mochawesome-temp/appointment && mkdir -p mochawesome-temp/appointment'
                                 sh 'npm ci'
                                 sh """
                                     npx cypress run \
@@ -168,6 +182,7 @@ pipeline {
                                 }
                             }
                             steps {
+                                sh 'rm -rf mochawesome-temp/confirmation && mkdir -p mochawesome-temp/confirmation'
                                 sh 'npm ci'
                                 sh """
                                     npx cypress run \
@@ -192,6 +207,7 @@ pipeline {
                                 }
                             }
                             steps {
+                                sh 'rm -rf mochawesome-temp/history && mkdir -p mochawesome-temp/history'
                                 sh 'npm ci'
                                 sh """
                                     npx cypress run \
@@ -216,6 +232,7 @@ pipeline {
                                 }
                             }
                             steps {
+                                sh 'rm -rf mochawesome-temp/api && mkdir -p mochawesome-temp/api'
                                 sh 'npm ci'
                                 sh """
                                     npx cypress run \
@@ -240,6 +257,7 @@ pipeline {
                                 }
                             }
                             steps {
+                                sh 'rm -rf mochawesome-temp/todo && mkdir -p mochawesome-temp/todo'
                                 sh 'npm ci'
                                 sh """
                                     npx cypress run \
@@ -262,22 +280,7 @@ pipeline {
             } // end inner stages
         } // end Run Tests
 
-        // ── Stage 4: Collect Parallel Results ──
-        stage('Collect Parallel Results') {
-            when {
-                expression { params.SUITE == 'regression' && params.PARALLEL }
-            }
-            steps {
-                unstash 'auth-results'
-                unstash 'appointment-results'
-                unstash 'confirmation-results'
-                unstash 'history-results'
-                unstash 'api-results'
-                unstash 'todo-results'
-            }
-        }
-
-        // ── Stage 5: Generate Consolidated Report ──
+        // ── Stage 4: Generate Consolidated Report ──
         stage('Generate Report') {
             agent {
                 docker {
@@ -286,11 +289,35 @@ pipeline {
                 }
             }
             steps {
+                script {
+                    // Determine execution mode label for the report
+                    def isParallelRegression = (params.SUITE == 'regression' && params.PARALLEL)
+                    def mode = isParallelRegression ? 'Parallel' : 'Sequential'
+                    def suiteLabel = params.SUITE.capitalize()
+                    env.REPORT_TITLE = "Cypress ${suiteLabel} Suite — ${mode} Execution"
+
+                    // Pull results into this Docker workspace
+                    sh 'rm -rf mochawesome-temp && mkdir -p mochawesome-temp mochawesome-report'
+                    if (isParallelRegression) {
+                        unstash 'auth-results'
+                        unstash 'appointment-results'
+                        unstash 'confirmation-results'
+                        unstash 'history-results'
+                        unstash 'api-results'
+                        unstash 'todo-results'
+                    } else {
+                        unstash 'suite-results'
+                    }
+                }
                 sh '''
                     npm ci
                     echo "Merging all Mochawesome JSON files..."
                     npx mochawesome-merge "mochawesome-temp/**/*.json" -o mochawesome-report/merged.json
-                    npx marge mochawesome-report/merged.json -f report -o mochawesome-report
+                    npx marge mochawesome-report/merged.json \
+                        -f report \
+                        -o mochawesome-report \
+                        --reportPageTitle "${REPORT_TITLE}" \
+                        --reportTitle "${REPORT_TITLE}"
                     echo "Report generated at mochawesome-report/report.html"
                 '''
             }
