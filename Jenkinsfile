@@ -52,7 +52,7 @@ pipeline {
                     }
                     agent {
                         docker {
-                            image 'cypress/included:15.3.0'
+                            image 'cypress/included:14.0.0'
                             args '--entrypoint='
                         }
                     }
@@ -89,7 +89,7 @@ pipeline {
                     }
                     agent {
                         docker {
-                            image 'cypress/included:15.3.0'
+                            image 'cypress/included:14.0.0'
                             args '--entrypoint='
                         }
                     }
@@ -115,7 +115,7 @@ pipeline {
                         stage('Auth Tests') {
                             agent {
                                 docker {
-                                    image 'cypress/included:15.3.0'
+                                    image 'cypress/included:14.0.0'
                                     args '--entrypoint='
                                 }
                             }
@@ -139,7 +139,7 @@ pipeline {
                         stage('Appointment Tests') {
                             agent {
                                 docker {
-                                    image 'cypress/included:15.3.0'
+                                    image 'cypress/included:14.0.0'
                                     args '--entrypoint='
                                 }
                             }
@@ -163,7 +163,7 @@ pipeline {
                         stage('Confirmation Tests') {
                             agent {
                                 docker {
-                                    image 'cypress/included:15.3.0'
+                                    image 'cypress/included:14.0.0'
                                     args '--entrypoint='
                                 }
                             }
@@ -187,7 +187,7 @@ pipeline {
                         stage('History Tests') {
                             agent {
                                 docker {
-                                    image 'cypress/included:15.3.0'
+                                    image 'cypress/included:14.0.0'
                                     args '--entrypoint='
                                 }
                             }
@@ -211,7 +211,7 @@ pipeline {
                         stage('API Validation Tests') {
                             agent {
                                 docker {
-                                    image 'cypress/included:15.3.0'
+                                    image 'cypress/included:14.0.0'
                                     args '--entrypoint='
                                 }
                             }
@@ -235,7 +235,7 @@ pipeline {
                         stage('TodoMVC Tests') {
                             agent {
                                 docker {
-                                    image 'cypress/included:15.3.0'
+                                    image 'cypress/included:14.0.0'
                                     args '--entrypoint='
                                 }
                             }
@@ -281,7 +281,7 @@ pipeline {
         stage('Generate Report') {
             agent {
                 docker {
-                    image 'cypress/included:15.3.0'
+                    image 'cypress/included:14.0.0'
                     args '--entrypoint='
                 }
             }
