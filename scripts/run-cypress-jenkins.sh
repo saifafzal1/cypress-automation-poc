@@ -146,6 +146,41 @@ if [[ "$FORCE_REMOTE" == false && -z "$JENKINS_URL" ]]; then
         echo -e "  ${TICK} ${BOLD}Local Jenkins detected${RESET} at ${CYAN}${LOCAL_URL}${RESET}"
         echo -e "  ${DIM}  Signed in as: ${LOCAL_USER}${RESET}"
         echo -e "  ${DIM}  Skipping connection prompts.${RESET}"
+
+        # ── Check for uncommitted changes ──────────────────────────────
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+        if git -C "$REPO_DIR" rev-parse --git-dir &>/dev/null; then
+            UNCOMMITTED=$(git -C "$REPO_DIR" status --porcelain 2>/dev/null) || UNCOMMITTED=""
+            if [[ -n "$UNCOMMITTED" ]]; then
+                echo ""
+                echo -e "  ${YELLOW}⚠  Uncommitted changes detected in your project:${RESET}"
+                git -C "$REPO_DIR" status --short | while IFS= read -r l; do
+                    echo -e "     ${DIM}${l}${RESET}"
+                done
+                echo ""
+                echo -e "  ${DIM}Jenkins reads from your local git history (committed state).${RESET}"
+                echo -e "  ${DIM}Uncommitted changes will NOT be picked up unless you commit them.${RESET}"
+                echo ""
+                if [[ "$NON_INTERACTIVE" == false ]]; then
+                    echo -ne "  ${BOLD}Commit all changes now before running? [Y/n]:${RESET} "
+                    read -r _docommit; _docommit="${_docommit:-Y}"
+                    if [[ "$_docommit" =~ ^[Yy] ]]; then
+                        echo -ne "  ${BOLD}Commit message${RESET} ${DIM}[test run $(date '+%Y-%m-%d %H:%M')]${RESET}: "
+                        read -r _cmsg
+                        _cmsg="${_cmsg:-test run $(date '+%Y-%m-%d %H:%M')}"
+                        git -C "$REPO_DIR" add -A
+                        git -C "$REPO_DIR" commit -m "$_cmsg" \
+                            && echo -e "  ${TICK} Changes committed" \
+                            || die "git commit failed. Resolve any issues and try again."
+                    else
+                        echo -e "  ${YELLOW}  Proceeding with last committed state.${RESET}"
+                    fi
+                fi
+            else
+                echo -e "  ${TICK} Working tree is clean — all changes are committed"
+            fi
+        fi
     else
         echo -e "  ${YELLOW}⚠${RESET}  No local Jenkins found at ${LOCAL_URL} (HTTP ${LOCAL_STATUS})"
         echo -e "  ${DIM}  Switching to remote mode — please enter connection details.${RESET}"

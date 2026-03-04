@@ -52,7 +52,7 @@ jobs:
             scm {
               git {
                 remote {
-                  url('https://github.com/saifafzal1/cypress-automation-poc.git')
+                  url('file:///automation')
                 }
                 branches('*/main')
               }
@@ -77,7 +77,7 @@ jobs:
             scm {
               git {
                 remote {
-                  url('https://github.com/saifafzal1/cypress-automation-poc.git')
+                  url('file:///automation')
                 }
                 branches('*/main')
               }
@@ -101,7 +101,7 @@ jobs:
             scm {
               git {
                 remote {
-                  url('https://github.com/saifafzal1/cypress-automation-poc.git')
+                  url('file:///automation')
                 }
                 branches('*/main')
               }
@@ -120,7 +120,7 @@ jobs:
             scm {
               git {
                 remote {
-                  url('https://github.com/saifafzal1/cypress-automation-poc.git')
+                  url('file:///automation')
                 }
                 branches('*/main')
               }
